@@ -4,6 +4,7 @@ about: 对 VISION.md 的修正提案（最高门槛）
 labels: "status: draft"
 type: "Vision Amendment"
 ---
+<!-- NOTE: Keep in sync with the copy in the sibling skill's references/ directory. -->
 
 # [修正标题：调整什么 + 为什么现在]
 > 示例：「将Q3战略重心从'用户增长'调整为'留存优化'，因为数据反馈显示获客成本已不可持续」

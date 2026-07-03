@@ -4,6 +4,7 @@ about: 纯问题陈述，不含解法
 labels: "status: draft"
 type: "Problem"
 ---
+<!-- NOTE: Keep in sync with the copy in the sibling skill's references/ directory. -->
 
 # [问题标题：谁在什么场景下遇到什么]
 > 示例：「运营人员每周需要手动整理3份Excel报表，耗时2小时」

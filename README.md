@@ -657,7 +657,7 @@ Problem Statement 被他人转化为 Feature Proposal：
 | 命令 | 用途 | 示例 |
 |------|------|------|
 | `/vapa-init` | 检测当前仓库的 VAPA 配置（Issue Type / Issue Fields / 状态标签 / 模板 / VISION.md）；不存在则初始化，存在则询问更新或重置 | `/vapa-init` |
-| `/vapa-proposal [subject] [type]` | 创建新提案；标题自动加上 `VEP-XXXX` 编号；可指定 Issue Type，不带参数时列出待定提案 | `/vapa-proposal "为订单列表增加批量导出能力"` → `VEP-0001 为订单列表增加批量导出能力`；`/vapa-proposal "调整 Q3 战略重心" "Vision Amendment"` |
+| `/vapa-proposal [subject] [type]` | AI 辅助创建提案：推断类型、澄清缺失信息、生成完整正文、预览确认后提交；不带参数时列出待定提案 | `/vapa-proposal "让VAPA变得可被一键安装，推广VAPA的理念和SKILLS"` |
 
 Skill 文件位于：
 
