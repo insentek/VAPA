@@ -1,7 +1,8 @@
 ---
 name: experiment
 about: 假设验证型提案
-labels: "type: experiment, status: draft"
+labels: "status: draft"
+type: "Experiment"
 ---
 
 # [实验标题：验证什么假设 + 预期结果]

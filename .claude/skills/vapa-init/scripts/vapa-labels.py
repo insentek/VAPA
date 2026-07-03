@@ -27,43 +27,6 @@ import requests
 
 VAPA_LABELS: list[dict] = [
 
-    # ── type: 提案类型 ──────────────────────────────────────────
-    {
-        "name": "type: vision-amendment",
-        "color": "6f42c1",
-        "description": "对 VISION.md 的修正提案（最高门槛）",
-    },
-    {
-        "name": "type: feature",
-        "color": "0075ca",
-        "description": "新能力提案",
-    },
-    {
-        "name": "type: problem",
-        "color": "e4e669",
-        "description": "纯问题陈述，不含解法",
-    },
-    {
-        "name": "type: improvement",
-        "color": "a2eeef",
-        "description": "对现有能力的改善",
-    },
-    {
-        "name": "type: experiment",
-        "color": "d93f0b",
-        "description": "假设验证型提案",
-    },
-    {
-        "name": "type: technical-debt",
-        "color": "e99695",
-        "description": "技术债清理",
-    },
-    {
-        "name": "type: research",
-        "color": "f9d0c4",
-        "description": "需要调研后才能形成提案",
-    },
-
     # ── status: 提案状态 ────────────────────────────────────────
     {
         "name": "status: draft",
@@ -115,77 +78,32 @@ VAPA_LABELS: list[dict] = [
         "color": "b60205",
         "description": "已拒绝，见评论中的拒绝理由",
     },
+]
 
-    # ── align: 战略对齐 ─────────────────────────────────────────
-    {
-        "name": "align: core",
-        "color": "0075ca",
-        "description": "直接支撑当前战略重心",
-    },
-    {
-        "name": "align: adjacent",
-        "color": "a2eeef",
-        "description": "相邻领域，有间接价值",
-    },
-    {
-        "name": "align: exploratory",
-        "color": "f9d0c4",
-        "description": "探索性，超出当前战略重心",
-    },
-    {
-        "name": "align: off-track",
-        "color": "b60205",
-        "description": "偏离当前方向，需专项讨论",
-    },
 
-    # ── size: 规模估计 ──────────────────────────────────────────
-    {
-        "name": "size: S",
-        "color": "0e8a16",
-        "description": "Agent 可在 1 天内独立完成",
-    },
-    {
-        "name": "size: M",
-        "color": "fbca04",
-        "description": "Agent 需 2–5 天，需人工拆解辅助",
-    },
-    {
-        "name": "size: L",
-        "color": "e4e669",
-        "description": "必须拆分为多个子提案后执行",
-    },
-    {
-        "name": "size: XL",
-        "color": "b60205",
-        "description": "战略级，需专项讨论后再拆解",
-    },
-
-    # ── contrib: 贡献角色 ───────────────────────────────────────
-    {
-        "name": "contrib: proposer",
-        "color": "bfd4f2",
-        "description": "提案发起者",
-    },
-    {
-        "name": "contrib: shaper",
-        "color": "d4c5f9",
-        "description": "实质性完善贡献者",
-    },
-    {
-        "name": "contrib: reviewer",
-        "color": "c5def5",
-        "description": "正式评审参与者",
-    },
-    {
-        "name": "contrib: validator",
-        "color": "bfe5bf",
-        "description": "验收执行者",
-    },
-    {
-        "name": "contrib: sponsor",
-        "color": "fef2c0",
-        "description": "提案战略背书人",
-    },
+# Labels from earlier versions of the VAPA taxonomy that should be cleaned up
+# during a reset. Issue types and issue fields now cover type/align/size/contrib.
+LEGACY_VAPA_LABELS: list[str] = [
+    "type: vision-amendment",
+    "type: feature",
+    "type: problem",
+    "type: improvement",
+    "type: experiment",
+    "type: technical-debt",
+    "type: research",
+    "align: core",
+    "align: adjacent",
+    "align: exploratory",
+    "align: off-track",
+    "size: S",
+    "size: M",
+    "size: L",
+    "size: XL",
+    "contrib: proposer",
+    "contrib: shaper",
+    "contrib: reviewer",
+    "contrib: validator",
+    "contrib: sponsor",
 ]
 
 
@@ -348,13 +266,28 @@ def main() -> int:
         description="Configure VAPA labels on a GitHub repository",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--token", required=True, help="GitHub personal access token (PAT)")
-    parser.add_argument("--owner", required=True, help="Repository owner (user or org)")
-    parser.add_argument("--repo", required=True, help="Repository name")
+    parser.add_argument("--token", help="GitHub personal access token (PAT)")
+    parser.add_argument("--owner", help="Repository owner (user or org)")
+    parser.add_argument("--repo", help="Repository name")
     parser.add_argument("--clean", action="store_true", help="Delete ALL existing labels first (destructive)")
     parser.add_argument("--dry-run", action="store_true", help="Print what would be done without making changes")
+    parser.add_argument("--list-names", action="store_true", help="Print canonical VAPA label names and exit")
+    parser.add_argument("--list-legacy", action="store_true", help="Print legacy VAPA label names and exit")
 
     args = parser.parse_args()
+
+    if args.list_names:
+        for label in VAPA_LABELS:
+            print(label["name"])
+        return 0
+
+    if args.list_legacy:
+        for name in LEGACY_VAPA_LABELS:
+            print(name)
+        return 0
+
+    if not args.token or not args.owner or not args.repo:
+        parser.error("--token, --owner, and --repo are required unless using --list-names")
 
     client = GitHubLabelClient(
         token=args.token,
