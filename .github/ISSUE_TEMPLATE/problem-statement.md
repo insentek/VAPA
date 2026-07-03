@@ -1,7 +1,8 @@
 ---
 name: problem-statement
 about: 纯问题陈述，不含解法
-labels: "type: problem, status: draft"
+labels: "status: draft"
+type: "Problem"
 ---
 
 # [问题标题：谁在什么场景下遇到什么]
