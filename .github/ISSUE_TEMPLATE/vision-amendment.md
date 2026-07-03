@@ -1,7 +1,8 @@
 ---
 name: vision-amendment
 about: 对 VISION.md 的修正提案（最高门槛）
-labels: "type: vision-amendment, status: draft"
+labels: "status: draft"
+type: "Vision Amendment"
 ---
 
 # [修正标题：调整什么 + 为什么现在]
