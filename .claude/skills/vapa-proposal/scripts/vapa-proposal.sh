@@ -36,7 +36,7 @@ detect_repo() {
   if git rev-parse --git-dir >/dev/null 2>&1; then
     local remote_url
     remote_url=$(git remote get-url origin 2>/dev/null || true)
-    if [[ -n "$remote_url" && "$remote_url" =~ github\.com[/:]([^/]+)/([^/.]+) ]]; then
+    if [[ -n "$remote_url" && "$remote_url" =~ github\.com[/:]([^/]+)/([^/]+?)(\.git)?$ ]]; then
       echo "${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
     fi
   fi
@@ -49,6 +49,7 @@ get_next_vep_number() {
   titles=$(gh issue list --repo "$repo" \
     --state all \
     --search "VEP- in:title" \
+    --limit 1000 \
     --json title \
     --jq '.[].title' 2>/dev/null || true)
 
@@ -157,18 +158,38 @@ parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --subject)
+        if [[ -z "${2:-}" ]]; then
+          echo "❌ --subject requires a value" >&2
+          usage >&2
+          exit 1
+        fi
         SUBJECT="$2"
         shift 2
         ;;
       --body-file)
+        if [[ -z "${2:-}" ]]; then
+          echo "❌ --body-file requires a value" >&2
+          usage >&2
+          exit 1
+        fi
         BODY_FILE="$2"
         shift 2
         ;;
       --type)
+        if [[ -z "${2:-}" ]]; then
+          echo "❌ --type requires a value" >&2
+          usage >&2
+          exit 1
+        fi
         ISSUE_TYPE="$2"
         shift 2
         ;;
       --repo)
+        if [[ -z "${2:-}" ]]; then
+          echo "❌ --repo requires a value" >&2
+          usage >&2
+          exit 1
+        fi
         REPO="$2"
         shift 2
         ;;
