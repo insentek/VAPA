@@ -2,7 +2,7 @@
 name: vapa-proposal
 description: Create a new VAPA proposal with AI-assisted drafting, preview, and confirmation before submitting to GitHub Issues.
 disable-model-invocation: true
-allowed-tools: Bash(git remote get-url origin) Bash(gh issue list *) Bash(gh issue view *) Read Write AskUserQuestion Bash(${CLAUDE_SKILL_DIR}/scripts/vapa-proposal.sh *)
+allowed-tools: Bash(git remote get-url origin) Bash(gh issue list *) Read Write AskUserQuestion Bash(${CLAUDE_SKILL_DIR}/scripts/vapa-proposal.sh *)
 ---
 
 # /vapa-proposal
@@ -32,6 +32,8 @@ Every approved proposal receives a `VEP-XXXX` prefix (4-digit, zero-padded). The
 - `gh` CLI installed and authenticated with permission to create issues on the target repo.
 - Run from inside a git repo, or set `VAPA_REPO=owner/repo`.
 - The organization must have the required VAPA issue types and issue fields (`Align`, `Size`, `Shaper`, `Reviewed By`, `Validator`, `Sponsor`).
+
+Org-level fields (`Align`, `Size`, `Shaper`, `Reviewed By`, `Validator`, `Sponsor`) are set manually on the created Issue. The skill may ask for an estimated `Size` during clarification, but it does not write fields automatically.
 
 ## Execution
 
@@ -81,9 +83,9 @@ Check required fields per type. If any are missing or vague, ask one focused que
 |---|---|
 | `Feature` / `Improvement` | target user, problem, core idea, "this is not", acceptance criteria, estimated `Size` |
 | `Problem` | affected users, observable evidence, impact if not solved |
-| `Vision Amendment` | current VISION.md text, proposed text, rationale, risks of not changing |
+| `Vision Amendment` | current VISION.md text, proposed text, rationale, 如果不修改可能产生的误导 |
 | `Experiment` | hypothesis, validation method, success metric, scope |
-| `Research` | question, expected output, why it matters now |
+| `Research` | research question, expected output/deliverable, why it matters now, estimated `Size` |
 
 ### Step 5: Draft the proposal
 
@@ -95,6 +97,10 @@ Select the bundled template that matches the type:
 | `Problem` | `${CLAUDE_SKILL_DIR}/references/problem-statement.md` |
 | `Vision Amendment` | `${CLAUDE_SKILL_DIR}/references/vision-amendment.md` |
 | `Experiment` | `${CLAUDE_SKILL_DIR}/references/experiment.md` |
+
+`Research` reuses `feature-proposal.md`: the "问题陈述" section becomes the research question, "提案内容" becomes the expected output and methodology, and "验收标准" becomes the deliverable criteria.
+
+After reading the template, remove its YAML frontmatter (the block from the first `---` to the closing `---`) before filling sections; the submission backend sets labels and type separately, so the frontmatter must not appear in the issue body.
 
 Read the template, replace the title placeholder with the user's subject, and fill each section using:
 
@@ -120,7 +126,7 @@ Show the complete proposal in the terminal:
 <full body>
 ```
 
-The `VEP-XXXX` number is a best-effort preview. The actual number is computed at submission time.
+Compute a best-effort preview number by running `${CLAUDE_SKILL_DIR}/scripts/vapa-proposal.sh --next-number --repo <owner/repo>`. Use the returned value in the preview title. The actual number is recomputed at submission time, so it may differ if another proposal is created in between.
 
 Then ask:
 
