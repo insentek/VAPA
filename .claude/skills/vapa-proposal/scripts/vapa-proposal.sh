@@ -36,8 +36,8 @@ detect_repo() {
   if git rev-parse --git-dir >/dev/null 2>&1; then
     local remote_url
     remote_url=$(git remote get-url origin 2>/dev/null || true)
-    if [[ -n "$remote_url" && "$remote_url" =~ github\.com[/:]([^/]+)/([^/]+?)(\.git)?$ ]]; then
-      echo "${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+    if [[ -n "$remote_url" && "$remote_url" =~ github\.com[/:]([^/]+)/([^/]+)(\.git)?$ ]]; then
+      echo "${BASH_REMATCH[1]}/${BASH_REMATCH[2]%.git}"
     fi
   fi
 }
