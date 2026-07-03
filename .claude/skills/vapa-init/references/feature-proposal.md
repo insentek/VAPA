@@ -1,9 +1,10 @@
 ---
-name: feature-proposal
-about: 提出一个新能力或改善提案
+name: "🚀 Feature Proposal"
+about: "提出一个新能力或改善提案"
 labels: "status: draft"
 type: "Feature"
 ---
+<!-- NOTE: Keep in sync with the copy in the sibling skill's references/ directory. -->
 
 # [提案标题：动词 + 对象 + 价值]
 > 示例：「为订单列表增加批量导出能力，使运营人员摆脱逐条下载」

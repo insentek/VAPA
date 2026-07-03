@@ -4,6 +4,7 @@ about: 假设验证型提案
 labels: "status: draft"
 type: "Experiment"
 ---
+<!-- NOTE: Keep in sync with the copy in the sibling skill's references/ directory. -->
 
 # [实验标题：验证什么假设 + 预期结果]
 > 示例：「验证'简化注册流程'假设：将步骤从5步减至2步可提升30%转化率」
