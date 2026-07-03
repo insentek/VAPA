@@ -1,7 +1,8 @@
 ---
 name: feature-proposal
 about: 提出一个新能力或改善提案
-labels: "type: feature, status: draft"
+labels: "status: draft"
+type: "Feature"
 ---
 
 # [提案标题：动词 + 对象 + 价值]
