@@ -128,7 +128,7 @@ class GitHubLabelClient:
         self.session.headers.update({
             "Authorization": f"token {token}",
             "Accept": "application/vnd.github.v3+json",
-            "User-Agent": "vapa-label-configurator/0.1",
+            "User-Agent": "vapa-labels/0.1",
         })
 
     # ── helpers ───────────────────────────────────────────────

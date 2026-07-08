@@ -56,5 +56,5 @@ type: "Experiment"
 
 ## 📎 附加信息
 
-- **预估规模**：size: S / M / L / XL
+- **建议 Size 字段**：S / M / L / XL
 - **提案人**：@username

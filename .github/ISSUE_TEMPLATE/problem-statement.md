@@ -50,4 +50,4 @@ type: "Problem"
 
 - **提案人**：@username
 - **相关提案**：#issue-number
-- **标签建议**：align: core / adjacent / exploratory
+- **建议 Align 字段**：core / adjacent / exploratory

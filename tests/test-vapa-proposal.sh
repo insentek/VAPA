@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Source the script under test. main() is guarded, so this only loads functions.
-source "$PROJECT_DIR/.claude/skills/vapa-proposal/scripts/vapa-proposal.sh"
+source "$PROJECT_DIR/skills/vapa-proposal/scripts/vapa-proposal.sh"
 
 # Override gh so get_next_vep_number can be tested without network.
 gh() {
