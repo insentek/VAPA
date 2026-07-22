@@ -49,6 +49,14 @@
 
 None encountered.
 
+## Post-handoff record (2026-07-22, appended)
+
+- Owner instructed direct PR submission, skipping the `vapa-audit` gate; owner
+  assumes the validator role. Recorded here and disclosed in the PR body.
+- Branch pushed; PR opened: https://github.com/insentek/VAPA/pull/17
+- Issue #15 synced: `status: in-progress` → `status: in-validation`, with a
+  comment linking the PR.
+
 ## Follow-up items deferred out of scope
 
 - Multi-reviewer committee orchestration (proposal non-goal; now tracked in
