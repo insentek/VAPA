@@ -78,6 +78,8 @@ From `issue-brief.md`, `source-map.md`, and the raw issue snapshot, extract:
 - Implementation constraints
 - Human decisions already made
 
+While reconstructing, verify the brief against the raw snapshot: acceptance criteria, boundary constraints, and exclusions in `issue-brief.md` must be verbatim quotes from the issue or comments, and no substantive requirement or later-comment amendment in the raw sources may be missing from the brief without a recorded exclusion reason. A brief that paraphrased or dropped contract items is a finding — the implementation may have been built against a distorted contract.
+
 If the issue was not approved and no explicit execution authorization exists, return `BLOCKED_FOR_HUMAN_DECISION`.
 
 ### Step 3: Inspect the Diff
