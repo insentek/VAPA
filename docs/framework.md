@@ -879,6 +879,7 @@ npx skills add insentek/VAPA
 |------|------|
 | `vapa-init` | 检测当前仓库的 VAPA 配置（Issue Type / Issue Fields / 状态标签 / 模板 / VISION.md）；不存在则初始化，存在则询问更新或重置 |
 | `vapa-proposal` | AI 辅助创建提案：推断类型、澄清缺失信息、生成完整正文、预览确认后提交；不带参数时列出待定提案 |
+| `vapa-review` | 通读提案 Issue 完整正文与全部评论，对照评审五问与质量自检清单生成结构化评审评论并自动发布，按阶段同步 `status:*` 标签；仅提供建议，不做通过/拒绝决策 |
 | `vapa-exec` | 对已批准提案进行可追踪 Agent 执行，生成 `.vapa/vapa-exec-<issue-id>/workspace/` 执行账本 |
 | `vapa-audit` | 独立审计 Agent 实现、测试、范围、可追踪性与 PR 准备状态 |
 
