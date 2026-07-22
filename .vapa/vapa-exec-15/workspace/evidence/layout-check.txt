@@ -1,0 +1,15 @@
+== layout ==
+skills/vapa-review/SKILL.md
+skills/vapa-review/references/review-comment.md
+skills/vapa-review/scripts/vapa-review.sh
+
+== executable bits ==
+-rwxr-xr-x@ skills/vapa-review/scripts/vapa-review.sh
+-rwxr-xr-x@ tests/test-vapa-review.sh
+
+== frontmatter ==
+---
+name: vapa-review
+description: Review a VAPA proposal issue in full (body + all comments) against the framework's five review questions and quality checklist, auto-post a structured review comment, and sync status labels. Advisory only — never makes approve/reject decisions.
+disable-model-invocation: true
+allowed-tools: Bash(git remote get-url origin) Bash(${CLAUDE_SKILL_DIR}/scripts/vapa-review.sh *) Read Write AskUserQuestion

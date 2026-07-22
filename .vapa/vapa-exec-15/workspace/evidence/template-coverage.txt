@@ -1,0 +1,32 @@
+== Q1-Q5 coverage in template ==
+Q1
+Q2
+Q3
+Q4
+Q5
+
+== checklist items ==
+6
+
+== marker present ==
+<!-- vapa-review -->
+
+== no issue-body edit commands in backend ==
+176:      gh issue edit "$issue" --repo "$REPO" \
+
+== note on 'gh issue edit' hit ==
+The only 'issue edit' call is do_start's label swap (lines 175-178):
+  case "$action" in
+    transition)
+      gh issue edit "$issue" --repo "$REPO" \
+        --remove-label "status: ready-for-review" \
+        --add-label "status: in-review" >/dev/null
+      echo "🏷️  $REPO#$issue: status: ready-for-review → status: in-review"
+It passes only --remove-label/--add-label; no --title/--body flags exist anywhere:
+6:#   vapa-review.sh post         --issue 15 --body-file review.md [--repo owner/repo]
+7:#   vapa-review.sh update       --comment-id 123 --body-file review.md [--repo owner/repo]
+35:  post         --issue <n|url> --body-file <path>   post a new review comment
+36:  update       --comment-id <id> --body-file <path> patch an existing review comment
+148:  gh issue comment "$issue" --repo "$REPO" --body-file "$BODY_FILE" >/dev/null
+235:      --body-file)
+237:          echo "❌ --body-file requires a value" >&2

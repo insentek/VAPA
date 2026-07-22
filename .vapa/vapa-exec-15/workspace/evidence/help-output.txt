@@ -1,0 +1,11 @@
+vapa-review.sh review backend
+
+  context      --issue <n|url>          print full issue JSON (body + comments + labels)
+  find-comment --issue <n|url>          print the ID of the latest vapa-review comment, or nothing
+  post         --issue <n|url> --body-file <path>   post a new review comment
+  update       --comment-id <id> --body-file <path> patch an existing review comment
+  start        --issue <n|url>          label sync: ready-for-review -> in-review
+
+Common flags:
+  --repo <owner/repo>  target repository (default: detected from git origin or VAPA_REPO)
+  --help               show this message

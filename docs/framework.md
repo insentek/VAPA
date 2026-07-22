@@ -165,7 +165,7 @@ VAPA 使用三层原生 GitHub 机制来管理提案元数据：
 | 维度 | 层级 | 机制 | 说明 |
 |---|---|---|---|
 | **提案类型** | 组织 | Issue Type | `Feature` / `Problem` / `Vision Amendment` / `Experiment` / `Improvement` / `Technical Debt` / `Research` |
-| **战略对齐 / 规模 / 贡献角色** | 组织 | Issue Fields | `Align`、`Size`、`Shaper`、`Reviewed By`、`Validator`、`Sponsor` |
+| **战略对齐 / 规模 / 贡献角色** | 组织 | Issue Fields | `Align`、`Size`、`Shaper`、`Reviewed By`、`Validator`、`Sponsor`；其中贡献角色字段为单选，选项来自组织成员 |
 | **提案人** | Issue | 作者 | 提案 Issue 的创建者即为 Proposer，不单独设置字段 |
 | **提案状态** | 仓库 | Label | `status: *` 生命周期标签 |
 
@@ -179,18 +179,18 @@ draft → refining → ready-for-review → in-review → approved
                         in-progress → in-validation → done
 ```
 
-| 标签 | 颜色 | 触发条件 |
-|------|------|---------|
-| `status: draft` | `#ededed` | 提案创建时自动标记 |
-| `status: refining` | `#fbca04` | 收到实质性讨论后 |
-| `status: ready-for-review` | `#0e8a16` | 提案人主动声明 |
-| `status: in-review` | `#006b75` | Steward确认启动评审 |
-| `status: approved` | `#0075ca` | 评审通过 |
-| `status: in-progress` | `#e4e669` | Agent开始执行 |
-| `status: in-validation` | `#d93f0b` | 等待验收 |
-| `status: done` | `#0e8a16` | 验收通过，关闭 |
-| `status: deferred` | `#ededed` | 延期，保留价值 |
-| `status: rejected` | `#b60205` | 已拒绝，附原因 |
+| 标签 | 颜色 | 说明 |
+|------|------|------|
+| `status: draft` | `#ededed` | 草稿，欢迎讨论 |
+| `status: refining` | `#fbca04` | 讨论中，正在完善 |
+| `status: ready-for-review` | `#0e8a16` | 提案人认为已完整，等待评审 |
+| `status: in-review` | `#006b75` | 正式评审进行中 |
+| `status: approved` | `#0075ca` | 评审通过，进入 Roadmap |
+| `status: in-progress` | `#e4e669` | Agent 正在执行实现 |
+| `status: in-validation` | `#d93f0b` | 实现完成，等待验收 |
+| `status: done` | `#0e8a16` | 验收通过，已关闭 |
+| `status: deferred` | `#c5def5` | 延期，保留价值，等待时机 |
+| `status: rejected` | `#b60205` | 已拒绝，见评论中的拒绝理由 |
 
 > **注意**：旧版 VAPA 用标签表达类型（`type:`）、对齐（`align:`）、规模（`size:`）和贡献角色（`contrib:`）。当前版本已迁移到更原生的 **Issue Type** 和 **Issue Fields**，只有状态流保留为标签。 `/vapa-init` 会在重置时清理旧版标签。
 ---
@@ -208,6 +208,7 @@ about: "提出一个新能力或改善提案"
 labels: "status: draft"
 type: "Feature"
 ---
+<!-- NOTE: Keep in sync with the copy in the sibling skill's references/ directory. -->
 
 # [提案标题：动词 + 对象 + 价值]
 > 示例：「为订单列表增加批量导出能力，使运营人员摆脱逐条下载」
@@ -267,27 +268,19 @@ type: "Feature"
 ---
 
 ## 🤔 开放性问题
-> 提案人自己还没想清楚的部分。诚实列出，邀请讨论。
 
-- [ ] [问题 1]
-- [ ] [问题 2]
+> 团队尚未想清楚、需要讨论的部分。
 
----
-
-## 🔗 相关上下文
-- 相关 Issue：#
-- 参考资料：
-- 历史讨论：
+- [ ] [开放问题 1]
+- [ ] [开放问题 2]
 
 ---
 
-## 📊 提案元数据
-| 字段 | 内容 |
-|------|------|
-| 提案人 | @username |
-| 提案日期 | YYYY-MM-DD |
-| 期望进入 Roadmap | YYYY-QX |
-| 预估规模 | S / M / L / XL |
+## 📎 附加信息
+
+- **建议 Size 字段**：S / M / L / XL
+- **提案人**：@username
+- **相关提案**：#issue-number
 ```
 
 ---
@@ -298,32 +291,59 @@ type: "Feature"
 
 ```markdown
 ---
-name: "🔍 Problem Statement"
-about: "陈述一个你观察到的问题。不需要提供解法。"
+name: problem-statement
+about: 纯问题陈述，不含解法
 labels: "status: draft"
 type: "Problem"
 ---
+<!-- NOTE: Keep in sync with the copy in the sibling skill's references/ directory. -->
 
-# [问题标题：描述现象，不含解法]
+# [问题标题：谁在什么场景下遇到什么]
+> 示例：「运营人员每周需要手动整理3份Excel报表，耗时2小时」
 
 ---
 
-## 我观察到了什么
-[具体的现象描述。第一人称。何时、何地、何人、发生了什么]
+## 📍 问题观察
 
-## 这个问题影响了谁
-[受影响的角色]
+**受影响的角色**
+[具体的用户/角色，不接受"所有人"]
 
-## 我认为这可能很重要，因为
-[连接到团队愿景或战略重心。或者说明为什么即使没有明确对齐也值得关注]
+**具体场景**
+[在什么时间、什么工具、什么流程中发生]
 
-## 我目前不知道的
-[诚实列出你的信息盲区。这有助于他人贡献补充]
+**现象描述**
+[用第一人称陈述你观察到的。不要跳到原因或解法]
 
-## 我期望从这个 Issue 得到什么
-- [ ] 确认：其他人是否也观察到了类似现象
-- [ ] 讨论：问题的根本原因是什么
-- [ ] 提案：有人愿意基于此发起 Feature Proposal 吗
+**频率/规模**
+[多久发生一次？影响多少人？]
+
+---
+
+## 🔍 已知的上下文
+
+**尝试过什么**
+[目前已有的 workaround 或临时方案]
+
+**相关系统/流程**
+[这个问题涉及哪些现有功能或流程]
+
+---
+
+## 🤔 为什么值得现在关注
+
+**不做会怎样**
+[3个月、6个月、12个月后的代价]
+
+**与战略的关系**
+[这个问题是否指向 VISION.md 中某个开放问题？]
+
+---
+
+## 📎 附加信息
+
+- **提案人**：@username
+- **相关提案**：#issue-number
+- **建议 Align 字段**：core / adjacent / exploratory
 ```
 
 ---
@@ -334,38 +354,135 @@ type: "Problem"
 
 ```markdown
 ---
-name: "🧭 Vision Amendment"
-about: "对 VISION.md 提出修正。注意：此类提案门槛更高。"
+name: vision-amendment
+about: 对 VISION.md 的修正提案（最高门槛）
 labels: "status: draft"
 type: "Vision Amendment"
 ---
+<!-- NOTE: Keep in sync with the copy in the sibling skill's references/ directory. -->
 
-# [修正标题：说明你想改变什么]
+# [修正标题：调整什么 + 为什么现在]
+> 示例：「将Q3战略重心从'用户增长'调整为'留存优化'，因为数据反馈显示获客成本已不可持续」
 
 ---
 
-## 当前表述
-> 引用 VISION.md 中你认为需要修正的原文
+## 📍 当前 VISION.md 的哪个部分
 
-```
-[原文]
+**引用原文**
+> [粘贴需要修改的 VISION.md 原文段落]
+
+**所在章节**
+[例如：当前阶段战略重心 / 我们明确不做什么 / 12个月后的成功标准]
+
+---
+
+## 💡 修正内容
+
+**修改后的文本**
+> [新的表述]
+
+**修改理由**
+[为什么现有表述不再适用？发生了什么变化？]
+
+---
+
+## 🔍 影响评估
+
+**对现有提案的影响**
+[哪些已批准的提案可能需要重新评估？]
+
+**对执行中工作的影响**
+[是否有正在进行的执行需要调整方向？]
+
+---
+
+## ✅ 通过标准
+
+> Vision Amendment 需要全员参与，14天讨论期，无明确反对方可通过。
+
+- [ ] 已通知所有团队成员
+- [ ] 讨论期已满14天
+- [ ] 无明确反对意见
+
+---
+
+## 📎 附加信息
+
+- **提案人**：@username
+- **上次 Vision 评审日期**：YYYY-MM-DD
 ```
 
-## 提议修改为
-```
-[新表述]
+---
+
+#### 模板四：Experiment（实验验证）
+
+> 文件路径：`.github/ISSUE_TEMPLATE/experiment.md`
+
+```markdown
+---
+name: experiment
+about: 假设验证型提案
+labels: "status: draft"
+type: "Experiment"
+---
+<!-- NOTE: Keep in sync with the copy in the sibling skill's references/ directory. -->
+
+# [实验标题：验证什么假设 + 预期结果]
+> 示例：「验证'简化注册流程'假设：将步骤从5步减至2步可提升30%转化率」
+
+---
+
+## 🔬 假设陈述
+
+**我们假设**
+[清晰的、可证伪的陈述]
+
+**如果假设成立**
+[我们会看到什么具体现象？]
+
+**如果假设不成立**
+[我们会看到什么？Plan B 是什么？]
+
+---
+
+## 📊 验证方法
+
+**实验设计**
+[A/B测试？原型验证？用户访谈？数据回溯？]
+
+**成功指标**
+[必须是可量化的。例如：「注册转化率从12%提升至15%」]
+
+**实验周期**
+[预计需要多长时间获得可信结论？]
+
+---
+
+## 📍 与战略的关系
+
+**对齐的重心**
+[引用 VISION.md 中的战略重心]
+
+**为什么是现在做这个实验**
+[时机判断]
+
+---
+
+## ✅ 验收标准
+
+- [ ] [实验完成的具体标志]
+- [ ] [结论记录的位置]
+- [ ] [后续行动决策]
+
+---
+
+## 📎 附加信息
+
+- **建议 Size 字段**：S / M / L / XL
+- **提案人**：@username
 ```
 
-## 修改的理由
-[为什么现有表述不再准确或不再适用？]
-
-## 如果不修改，可能产生的误导
-[现有表述可能导致哪些方向错误的提案或决策？]
-
-## 我认为需要讨论的核心问题
-- [ ] [核心问题 1]
-- [ ] [核心问题 2]
-```
+> **注意**：`Research` 类型 Issue 没有单独模板，直接复用 `feature-proposal.md` 模板，将“问题陈述”改写为研究问题、“提案内容”改写为预期产出与方法、“验收标准”改写为可交付成果标准即可。
 
 ---
 
@@ -507,11 +624,10 @@ approved
   → plan-ready
   → implemented
   → tested
-  → audited
-  → ready-for-pr / needs-revision / blocked-for-human
-  → in-validation
-  → done
+  → audit-ready
 ```
+
+`audit-ready` 表示 `vapa-exec` 已完成实现与测试，并生成了 PR 草稿。此后进入 `vapa-audit` 进行独立审计，审计结论为 `READY_FOR_PR`、`NEEDS_REVISION` 或 `BLOCKED_FOR_HUMAN_DECISION`。
 
 ### 5.1 Agent 执行准入检查
 
@@ -554,9 +670,10 @@ approved
   VAPA_EXEC_PLAN.md
   VAPA_EXEC_LOG.md
   TEST_REPORT.md
-  VAPA_AUDIT.md
   PR_DRAFT.md
 ```
+
+`VAPA_AUDIT.md` 由 `vapa-audit` skill 在 `vapa-exec` 完成后独立生成，不放在执行工作区初始清单中。
 
 该目录默认可以提交到 GitHub，用于追踪 Agent 如何理解、计划、实现和验收一个提案。团队可以在其中复盘 Agent 的决策质量，改进后续提案模板、执行协议和技能设计。
 
@@ -571,8 +688,9 @@ approved
 | Planner Agent | 将验收标准转化为可执行计划和测试策略 | `VAPA_EXEC_PLAN.md` |
 | Implementation Agent | 按计划实现，记录关键判断和偏离点 | 代码变更、`VAPA_EXEC_LOG.md` |
 | Test Agent | 根据验收标准设计并运行验证 | `TEST_REPORT.md` |
-| Audit Agent | 独立审计实现是否符合提案、边界和测试要求 | `VAPA_AUDIT.md` |
 | PR Agent | 整理 PR 标题、正文、验收映射和贡献记录 | `PR_DRAFT.md` |
+
+独立审计由 `vapa-audit` skill 承担，不属于 `vapa-exec` 的执行角色。
 
 不同 Size 使用不同执行策略：
 
@@ -761,6 +879,7 @@ npx skills add insentek/VAPA
 |------|------|
 | `vapa-init` | 检测当前仓库的 VAPA 配置（Issue Type / Issue Fields / 状态标签 / 模板 / VISION.md）；不存在则初始化，存在则询问更新或重置 |
 | `vapa-proposal` | AI 辅助创建提案：推断类型、澄清缺失信息、生成完整正文、预览确认后提交；不带参数时列出待定提案 |
+| `vapa-review` | 通读提案 Issue 完整正文与全部评论，对照评审五问与质量自检清单生成结构化评审评论并自动发布，按阶段同步 `status:*` 标签；仅提供建议，不做通过/拒绝决策 |
 | `vapa-exec` | 对已批准提案进行可追踪 Agent 执行，生成 `.vapa/vapa-exec-<issue-id>/workspace/` 执行账本 |
 | `vapa-audit` | 独立审计 Agent 实现、测试、范围、可追踪性与 PR 准备状态 |
 
@@ -768,6 +887,7 @@ npx skills add insentek/VAPA
 
 - 已安装并登录 [GitHub CLI (`gh`)](https://cli.github.com/)，且对目标仓库有写权限。
 - `vapa-init` 依赖 Python 3 与 `requests` 库。
+- 组织级 Issue Type 与 Issue Fields 需由组织管理员预先创建；`/vapa-init` 会检查它们是否存在。若贡献者字段（`Shaper`、`Reviewed By`、`Validator`、`Sponsor`）尚未绑定组织成员，可运行 `/vapa-init --init-fields` 进行初始化。
 
 ---
 

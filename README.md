@@ -30,6 +30,7 @@ The full framework specification lives in [docs/framework.md](docs/framework.md)
 |---|---|
 | `vapa-init` | Initialize VAPA labels, issue templates, and repository configuration for a GitHub project. |
 | `vapa-proposal` | Turn an idea into a structured VAPA proposal and submit it as a GitHub Issue. |
+| `vapa-review` | Review a proposal issue in full (body + comments) against the framework's review questions, auto-post a structured review comment, and sync status labels. Advisory only — never approves or rejects. |
 | `vapa-exec` | Execute an approved proposal through a traceable project-local Agent workspace. |
 | `vapa-audit` | Independently audit Agent implementation, tests, scope, traceability, and PR readiness. |
 
@@ -46,6 +47,7 @@ Install a single skill:
 ```bash
 npx skills add insentek/VAPA@vapa-init
 npx skills add insentek/VAPA@vapa-proposal
+npx skills add insentek/VAPA@vapa-review
 npx skills add insentek/VAPA@vapa-exec
 npx skills add insentek/VAPA@vapa-audit
 ```
@@ -57,14 +59,16 @@ npx skills add insentek/VAPA@vapa-audit
 3. Ask the agent to run `vapa-init` to configure labels and issue templates.
 4. Create or fill `VISION.md` so proposals have a strategic reference point.
 5. Use `vapa-proposal` to create proposals.
-6. After review and approval, use `vapa-exec` to implement approved work.
-7. Use `vapa-audit` before PR submission or human validation.
+6. Use `vapa-review` to generate a structured review baseline on proposal issues.
+7. After review and approval, use `vapa-exec` to implement approved work.
+8. Use `vapa-audit` before PR submission or human validation.
 
 Typical flow:
 
 ```text
 vapa-init
   -> vapa-proposal
+  -> vapa-review
   -> human / team review
   -> vapa-exec
   -> vapa-audit
@@ -78,6 +82,7 @@ vapa-init
 ├── skills/                     # Publishable skills for npx skills add
 │   ├── vapa-init/
 │   ├── vapa-proposal/
+│   ├── vapa-review/
 │   ├── vapa-exec/
 │   └── vapa-audit/
 ├── docs/
@@ -133,7 +138,7 @@ VAPA is currently `v0.1-draft`. The framework and skills are intentionally open 
 Contributions are welcome, especially in these areas:
 
 - improving the proposal and audit protocols
-- adding `vapa-review` for structured review committee workflows
+- extending `vapa-review` toward multi-reviewer committee workflows (reviewer selection, vote aggregation)
 - hardening GitHub Projects / Roadmap initialization
 - adding tests for skill scripts and generated issue templates
 - documenting real-world VAPA adoption patterns
