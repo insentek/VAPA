@@ -150,6 +150,10 @@ Write `issue-brief.md` with these sections:
 
 Every non-obvious claim should point back to `source-map.md`.
 
+Verbatim rule: acceptance criteria, boundary constraints, and "this is not" exclusions must be quoted word-for-word from the issue or comments, each with its source reference. Paraphrasing these three categories is forbidden — the brief may add interpretation next to a quote, but never replace it. These quotes are the contract that planning, implementation, testing, and audit all trace back to.
+
+Coverage self-check: the brief is a lossy summary of `issue.json` and `comments/`, so after writing it, re-read the raw sources and verify the reverse direction — every substantive requirement, constraint, and later-comment amendment either appears in the brief or is explicitly listed in a "Deliberately excluded" note with the reason. `source-map.md` guarantees that brief claims are traceable to sources; this check guarantees that sources are not silently dropped from the brief.
+
 ### Step 4: Survey the Codebase
 
 Before planning, write `codebase-survey.md`. Planning without this survey produces plans that fight the existing architecture.
@@ -167,6 +171,8 @@ For frontend work, additionally inventory the design system: component library, 
 ### Step 5: Plan
 
 Write `VAPA_EXEC_PLAN.md` before editing code.
+
+Before planning, spot-check the brief against the raw sources: re-read `issue.json` and at least the most recent comments in `comments/`. The brief is the working input, not the source of truth — if it conflicts with or omits something in the raw issue, the raw issue wins; fix the brief (append a dated correction, per the no-rewrite rule) before writing the plan. This matters most when the Planner is a different agent or session than the one that wrote the brief.
 
 Required sections:
 
@@ -354,6 +360,8 @@ Expected audit verdicts:
 
 - Starting code edits before `readiness-report.md`, `codebase-survey.md`, and `VAPA_EXEC_PLAN.md` exist.
 - Treating comments or design screenshots as optional context.
+- Paraphrasing acceptance criteria or boundary constraints in the brief instead of quoting them verbatim.
+- Planning and implementing from `issue-brief.md` alone, treating the summary as the source of truth and never spot-checking `issue.json`.
 - Planning file changes without surveying existing patterns, then fighting the architecture mid-implementation.
 - Inventing new components, styles, or utilities when the codebase already has an equivalent.
 - Implementing only the happy-path UI state and ignoring loading, empty, error, and disabled states.
