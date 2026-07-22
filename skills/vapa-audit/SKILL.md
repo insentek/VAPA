@@ -28,16 +28,26 @@ Audit from the execution workspace:
 
 ```text
 .vapa/vapa-exec-<issue-id>/workspace/
+  state.json
   issue-brief.md
   source-map.md
   readiness-report.md
+  codebase-survey.md
   VAPA_EXEC_PLAN.md
   VAPA_EXEC_LOG.md
   TEST_REPORT.md
+  evidence/
   PR_DRAFT.md
 ```
 
+Conditional inputs, required when applicable:
+
+- `ui-spec.md` — required when the change touches user-facing UI.
+- `decomposition.md` — required in the parent workspace when the task was executed as decomposed sub-issues.
+
 Also inspect the actual repository diff and relevant files. Do not rely only on the execution log.
+
+Check `state.json` before starting: the phase should be `tested`, and `revision_count` tells you how many audit round-trips have already happened. If `revision_count` is already 2 or more and the same underlying finding persists, prefer `BLOCKED_FOR_HUMAN_DECISION` over another `NEEDS_REVISION` — repeated failed revisions are evidence of a broken assumption, not a coding problem.
 
 ## Verdicts
 
@@ -53,7 +63,7 @@ Return exactly one verdict in `VAPA_AUDIT.md`:
 
 ### Step 1: Validate Workspace Completeness
 
-Check that required workspace files exist and are internally consistent.
+Check that required workspace files exist and are internally consistent. Determine the task's domain (frontend, backend, mixed) and execution mode (inline or decomposed) from `state.json` and the plan, then verify the conditional artifacts that apply: `ui-spec.md` and `evidence/` for UI work, `decomposition.md` for decomposed work.
 
 Fail with `NEEDS_REVISION` if execution artifacts are missing but can be recreated. Use `BLOCKED_FOR_HUMAN_DECISION` only if the missing artifact prevents a judgment that an Agent cannot safely infer.
 
@@ -81,6 +91,13 @@ Check:
 - No secrets, private data, generated noise, or unsuitable artifacts are added.
 - `.vapa` workspace content is safe to commit or clearly marked for redaction.
 
+Also check architecture conformance against `codebase-survey.md` and the plan's Design section:
+
+- New code follows the existing patterns the survey identified (layering, naming, error handling, test structure), or the deviation is justified in the plan or log.
+- Existing components, utilities, and design tokens were reused where the survey said equivalents exist; bespoke reinventions are findings.
+- Interfaces, schemas, or events changed in the diff match the contracts defined in the plan's Design section. Undeclared contract changes are at least `P1`.
+- New dependencies introduced by the diff were approved in the plan or by a recorded human decision. Unapproved dependencies are at least `P1`.
+
 ### Step 4: Trace Acceptance Criteria
 
 For each acceptance criterion, identify evidence:
@@ -101,8 +118,30 @@ Validate:
 - Failures are explained and not hidden.
 - Tests map to acceptance criteria.
 - Manual verification is described when automated tests are impossible.
+- Claimed command output is backed by captures in `evidence/`, not just asserted in prose.
 
 If tests were not run, the audit may still pass only when the reason is strong, low-risk, and the acceptance criteria have other evidence.
+
+### Step 5a: Review UI Evidence (frontend or mixed tasks)
+
+For changes that touch user-facing UI, audit against `ui-spec.md`:
+
+- Rendered screenshots exist in `evidence/` for every affected screen or component, at the viewports the spec put in scope. UI acceptance criteria without rendered evidence are unverified, not passed.
+- Non-default interaction states introduced by the change (loading, empty, error, disabled) have evidence or an explicit recorded gap. Happy-path-only evidence is a finding.
+- When a design reference exists in `images/`, the report compares implementation against it and explains intentional deviations.
+- Design tokens and existing components were used as the spec required; hardcoded values duplicating tokens are findings.
+- Keyboard operability of new interactive flows is confirmed or recorded as a gap.
+
+If rendering was impossible in the execution environment, the gap must be explicitly recorded for the human validator. A silent skip is `NEEDS_REVISION`; an explicitly recorded rendering gap can pass with a note in Human Review Notes.
+
+### Step 5b: Review Decomposition Integration (decomposed tasks)
+
+When the work was executed as sub-issues per `decomposition.md`:
+
+- Each sub-issue has its own complete workspace and, where required, its own audit.
+- The cross-cutting contracts defined in the parent plan were respected by all sub-implementations.
+- An integration pass was run after the last sub-issue: full test suite results are recorded in the parent `TEST_REPORT.md`.
+- The parent issue's acceptance criteria are traced against the integrated whole, not just the union of sub-issue claims.
 
 ### Step 6: Review PR Draft
 
@@ -111,7 +150,7 @@ Check `PR_DRAFT.md` for:
 - Correct linked issue.
 - Clear implementation summary.
 - Acceptance criteria mapping.
-- Test evidence.
+- Test evidence, including visual evidence pointers for UI changes.
 - Known limitations.
 - VAPA workspace path.
 - Contribution record suggestions.
@@ -121,6 +160,8 @@ The PR draft should make human validation faster, not merely summarize that work
 ### Step 7: Write `VAPA_AUDIT.md`
 
 Write the audit report into the workspace.
+
+After writing the report, update `state.json`: set `phase` to `audited`, and if the verdict is `NEEDS_REVISION`, increment `revision_count` so the revision budget stays enforceable across sessions.
 
 Required format:
 
@@ -147,6 +188,12 @@ READY_FOR_PR | NEEDS_REVISION | BLOCKED_FOR_HUMAN_DECISION
 - Results:
 - Missing coverage:
 
+## UI Evidence Review (when the change touches UI)
+- Screens/states with rendered evidence:
+- States or viewports missing evidence:
+- Design reference comparison:
+- Accessibility and keyboard checks:
+
 ## Findings
 | Severity | Finding | Required Action |
 |---|---|---|
@@ -172,6 +219,11 @@ READY_FOR_PR | NEEDS_REVISION | BLOCKED_FOR_HUMAN_DECISION
 
 - Trusting `VAPA_EXEC_LOG.md` without inspecting the diff.
 - Treating passing tests as proof that acceptance criteria are met.
+- Passing UI acceptance criteria on the strength of code review alone, without rendered visual evidence.
+- Skipping the `ui-spec.md` and `evidence/` checks because the diff "looks like a small UI change".
+- Ignoring architecture conformance — new bespoke components or undeclared contract changes slipping through as style preferences.
+- Auditing a decomposed task's sub-issues individually but never checking the integrated whole.
+- Returning `NEEDS_REVISION` a third time for the same finding instead of escalating to a human.
 - Allowing scope expansion because the implementation looks useful.
 - Marking `READY_FOR_PR` while PR body lacks traceability.
 - Ignoring unsafe content in `.vapa` workspace artifacts.

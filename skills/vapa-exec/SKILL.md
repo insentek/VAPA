@@ -1,6 +1,6 @@
 ---
 name: vapa-exec
-description: Use when handed a VAPA issue link and asked to implement, plan, fix, or refine an approved proposal. Orchestrates artifact-driven execution using a project-local .vapa workspace, with multi-agent execution preferred and single-session execution allowed only as a fallback for small tasks.
+description: Use when handed a VAPA issue link and asked to implement, plan, fix, or refine an approved proposal. Orchestrates artifact-driven execution using a project-local .vapa workspace, with multi-agent execution preferred, a decomposition protocol for large tasks, architecture rigor gates before coding, and visual verification requirements for frontend work.
 ---
 
 # VAPA Issue Execution
@@ -36,8 +36,11 @@ approved
   -> plan-ready
   -> implemented
   -> tested
-  -> audit-ready
+  -> audited
+  -> ready-for-pr | needs-revision | blocked-for-human
 ```
+
+The current state must always be recoverable from the workspace alone. Any session — including a fresh one after an interruption — must be able to read `state.json` and the artifacts, and continue from the recorded phase without re-deriving context from memory.
 
 ## Required Workspace
 
@@ -53,21 +56,55 @@ Required structure:
 
 ```text
 .vapa/vapa-exec-<issue-id>/workspace/
-  issue.json
-  comments/
-  images/
+  state.json            # machine-readable phase tracker (see below)
+  issue.json            # raw issue snapshot
+  comments/             # one file per comment, chronological
+  images/               # referenced screenshots and design assets
   issue-brief.md
   source-map.md
   readiness-report.md
+  codebase-survey.md    # architecture baseline before planning
   VAPA_EXEC_PLAN.md
   VAPA_EXEC_LOG.md
   TEST_REPORT.md
+  evidence/             # screenshots, recordings, command output captures
   PR_DRAFT.md
 ```
 
+Conditional artifacts:
+
+- `ui-spec.md` — required whenever the change touches user-facing UI (see Frontend Execution Requirements).
+- `decomposition.md` — required whenever the task is executed as decomposed sub-issues (see Large Task Protocol).
+
 `VAPA_AUDIT.md` is produced by `vapa-audit` after implementation and tests are complete.
 
+### state.json
+
+Keep a small machine-readable tracker so execution can be resumed and orchestrated:
+
+```json
+{
+  "issue": "42",
+  "size": "S",
+  "domain": "frontend | backend | mixed | docs",
+  "phase": "readiness-check | context-ready | plan-ready | implemented | tested | audited",
+  "branch": "vapa/42-batch-export",
+  "revision_count": 0,
+  "updated_at": "YYYY-MM-DDTHH:mm:ssZ"
+}
+```
+
+Update `state.json` at every phase transition. If a session starts and `state.json` already exists, resume from the recorded phase instead of restarting; verify the recorded branch and the latest artifacts before continuing.
+
 ## Execution Flow
+
+### Step 0: Classify the Task
+
+Before anything else, classify along three axes and record the result in `state.json`:
+
+- **Size**: from the issue's `Size` field, or estimate if absent. This selects the execution mode (see Large Task Protocol).
+- **Domain**: frontend, backend, mixed, or docs. Frontend or mixed tasks trigger the Frontend Execution Requirements.
+- **Risk**: does the change touch data models, public APIs, auth, payments, or shared infrastructure? High-risk changes require the extended design section in the plan.
 
 ### Step 1: Fetch the Source of Truth
 
@@ -91,8 +128,10 @@ Required checks:
 - Acceptance criteria are concrete enough to test or manually verify.
 - Boundaries are stated: what must not change, compatibility requirements, and out-of-scope work.
 - Required context is available: relevant code, APIs, data structures, designs, or linked documents.
+- For UI work: design references (screenshots, mockups, or an explicit "follow existing design system" instruction) exist, or the gap is recorded as a human decision point.
 - `Size: M` or larger proposals are split into `Size: S` sub-issues, or the reason for continuing is explicitly documented.
 - No new information invalidates the proposal's core assumptions.
+- The working tree is clean and based on the latest default branch, or the divergence is recorded.
 
 If any blocking item fails, stop implementation. Produce `readiness-report.md` with `Verdict: BLOCKED` and ask for the missing human decision.
 
@@ -111,7 +150,21 @@ Write `issue-brief.md` with these sections:
 
 Every non-obvious claim should point back to `source-map.md`.
 
-### Step 4: Plan
+### Step 4: Survey the Codebase
+
+Before planning, write `codebase-survey.md`. Planning without this survey produces plans that fight the existing architecture.
+
+Required content:
+
+- **Impact area**: modules, packages, and files the change will plausibly touch, and their current responsibilities.
+- **Existing patterns**: how the codebase already solves similar problems — naming conventions, layering, error handling style, state management, test structure. New code must follow the closest existing analog unless the plan explicitly justifies deviating.
+- **Reusable assets**: existing components, utilities, services, or design tokens the implementation should reuse instead of recreating.
+- **Contracts at the boundary**: public APIs, database schemas, events, or shared types the change touches, and who else depends on them.
+- **Constraints discovered**: build tooling, lint rules, minimum runtime versions, CI checks that the implementation must pass.
+
+For frontend work, additionally inventory the design system: component library, theme/token files, and the closest existing screens to imitate.
+
+### Step 5: Plan
 
 Write `VAPA_EXEC_PLAN.md` before editing code.
 
@@ -120,57 +173,126 @@ Required sections:
 - Objective
 - Non-goals
 - Acceptance criteria mapping
+- Design
+  - Interfaces and contracts: function/API signatures, component props, events, or schema changes, defined before implementation.
+  - Data: model changes, migrations, and backward compatibility for existing data.
+  - Error handling and edge cases at system boundaries.
+  - Key decisions: for each non-obvious choice, the selected option, at least one rejected alternative, and why. High-risk tasks (per Step 0) must also cover security, performance, and rollout implications.
+  - New dependencies: any new library or service requires explicit justification and is a human decision point unless the proposal already approved it.
 - Files and modules likely to change
-- Implementation steps
+- Implementation steps, ordered so the code builds and tests pass after each step
 - Test strategy and commands
 - Risks and rollback plan
 - Human decision points
 
-For `Size: S`, a single session may plan and implement inline. For `Size: M`, prefer separate Planner, Implementation, and Audit roles. For `Size: L` or `XL`, stop and request decomposition unless the issue already points to a smaller approved sub-issue.
+For UI work, the plan must reference `ui-spec.md` (see Frontend Execution Requirements) and map acceptance criteria to concrete screens and states.
 
-### Step 5: Implement
+For `Size: S`, a single session may plan and implement inline. For `Size: M`, prefer separate Planner, Implementation, and Audit roles. For `Size: L` or `XL`, follow the Large Task Protocol.
+
+### Step 6: Implement
 
 Implement according to the plan. Keep changes scoped to the approved proposal.
+
+Git discipline:
+
+- Work on a dedicated branch named `vapa/<issue-id>-<slug>` unless the repository has its own convention.
+- Commit in coherent, buildable increments that follow the plan's implementation steps. Reference the issue number in commit messages.
+- Commit workspace artifact updates together with the implementation steps they describe.
 
 Maintain `VAPA_EXEC_LOG.md` with:
 
 - Files changed
-- Steps completed
+- Steps completed, with commit references
 - Deviations from plan and why
 - Key Agent-made judgments
 - Human confirmations or blockers
 - Follow-up items deferred out of scope
 
-If the implementation reveals that the proposal's assumptions are wrong, stop and request a human decision instead of silently changing direction.
+Handle deviations by severity:
 
-### Step 6: Test
+1. **In-plan judgment** (naming, minor structure): decide, log it.
+2. **Plan deviation within scope** (different file layout, extra step discovered): log it, append a dated revision note to `VAPA_EXEC_PLAN.md`, continue.
+3. **Broken assumption** (the proposal's premise is wrong, the approved approach cannot work, scope must grow): stop, set the log entry, and request a human decision. Never silently change direction or expand scope.
+
+For long-running work, checkpoint at least at every completed implementation step: update `state.json`, `VAPA_EXEC_LOG.md`, and commit, so an interrupted session loses at most one step.
+
+### Step 7: Test
 
 Run the relevant checks and write `TEST_REPORT.md`.
 
 Include:
 
-- Commands run
+- Commands run, with actual output captured in `evidence/`
 - Pass/fail results
 - Manual verification performed
-- Acceptance criteria coverage
+- Acceptance criteria coverage — every criterion must map to a test, a manual check, or an explicitly recorded gap
+- Regression check: existing test suite and lint/build for the impacted area still pass
 - Known gaps or tests not run, with reasons
 
-If tests fail because of the implementation, return to Step 5. If tests fail because the proposal needs a decision, stop and record the blocker.
+For UI work, testing additionally requires visual evidence — see Frontend Execution Requirements.
 
-### Step 7: Prepare PR Draft
+If tests fail because of the implementation, return to Step 6. If tests fail because the proposal needs a decision, stop and record the blocker.
+
+### Step 8: Prepare PR Draft
 
 Write `PR_DRAFT.md` with:
 
-- Suggested PR title
+- Suggested PR title (`[#<issue>] verb + object`)
 - Linked issue
 - Implementation summary
 - Acceptance criteria mapping
-- Test evidence
+- Test evidence, including visual evidence for UI changes
 - Known limitations
 - VAPA workspace path
 - Suggested contribution records
 
 Do not claim the work is ready for PR until `vapa-audit` returns `READY_FOR_PR`.
+
+## Large Task Protocol
+
+Size selects the execution mode:
+
+| Size | Mode |
+|---|---|
+| S | Single session allowed; all artifacts still required |
+| M | Multi-agent roles preferred; decomposition into S sub-issues strongly preferred |
+| L | Must be decomposed into `Size: S` sub-issues before implementation |
+| XL | Must return to the Proposal/Review layer for re-scoping; never execute directly |
+
+When executing via decomposition:
+
+1. Write `decomposition.md` in the parent workspace, containing: the list of sub-issues (or sub-task entries if creating real issues is not possible), the dependency order between them, what each delivers, and the integration criteria that define "the parent issue is done".
+2. Each sub-issue gets its own `vapa-exec` run with its own workspace (`.vapa/vapa-exec-<sub-id>/workspace/`), linking back to the parent in its `issue-brief.md`. Independent sub-issues may run in parallel; dependent ones must respect the recorded order.
+3. Cross-cutting contracts (shared interfaces, schemas, design tokens) are defined in the parent plan **before** sub-issue implementation starts, so parallel work does not diverge.
+4. After all sub-issues complete, run an integration pass in the parent workspace: verify the sub-implementations compose, run the full test suite, and record the result in the parent `TEST_REPORT.md` before handing to audit.
+
+Revision budget: if `vapa-audit` returns `NEEDS_REVISION` twice for the same underlying finding, or `revision_count` in `state.json` reaches 3, stop and escalate to a human instead of iterating further. Repeated failed revisions are evidence of a broken assumption, not a coding problem.
+
+## Frontend Execution Requirements
+
+These requirements apply whenever `domain` is frontend or mixed. Backend-only tasks may skip this section.
+
+### ui-spec.md
+
+Before implementation, translate all design inputs (screenshots in `images/`, mockups, textual descriptions) into `ui-spec.md`:
+
+- **Screens and components affected**, each mapped to its closest existing component or screen in the codebase (from `codebase-survey.md`). Prefer extending existing components over creating bespoke ones.
+- **Layout and visual intent**: spacing, hierarchy, and alignment expectations; which design tokens (colors, typography, spacing scale) apply. Never hardcode values that exist as tokens.
+- **Interaction states** for every interactive element: default, hover, focus, active, disabled, loading, empty, and error. Ambiguous states are open questions, not silent guesses — record them and either resolve from the design system's conventions or raise them as human decision points.
+- **Responsive behavior**: which breakpoints are in scope and how the layout adapts. If the proposal is silent, follow the repository's existing breakpoint conventions and record that judgment.
+- **Accessibility baseline**: keyboard operability and focus order, accessible names/roles for new controls, and color contrast for new visual elements.
+- **Motion**: transitions or animations if specified; otherwise follow existing patterns.
+
+### Visual verification
+
+`TEST_REPORT.md` for UI work must include, stored under `evidence/`:
+
+- Screenshots of every affected screen or component in its primary state, at least at one desktop and one mobile viewport when responsive behavior is in scope.
+- Screenshots or notes covering the non-default interaction states that the change introduces (loading, empty, error, disabled).
+- A side-by-side or explicit comparison against the design reference when one exists, noting any intentional deviations and why.
+- Confirmation of keyboard navigation through new interactive flows.
+
+Use a browser tool to capture real rendered output whenever the environment allows; if rendering is impossible in the environment, record that as an explicit verification gap for the human validator rather than skipping silently.
 
 ## Multi-Agent Roles
 
@@ -178,14 +300,23 @@ Use separate agents or separate sessions when the environment supports it:
 
 | Role | Responsibility | Output |
 |---|---|---|
-| Orchestrator | Gatekeeping, workspace setup, phase transitions | `readiness-report.md` |
-| Context Agent | Issue/comment/image/repo context capture | `issue-brief.md`, `source-map.md` |
-| Planner Agent | Plan and test strategy | `VAPA_EXEC_PLAN.md` |
+| Orchestrator | Gatekeeping, workspace setup, phase transitions, state tracking | `readiness-report.md`, `state.json`, `decomposition.md` |
+| Context Agent | Issue/comment/image/repo context capture, codebase survey | `issue-brief.md`, `source-map.md`, `codebase-survey.md` |
+| Planner Agent | Design, plan, and test strategy | `VAPA_EXEC_PLAN.md`, `ui-spec.md` |
 | Implementation Agent | Code changes and execution log | code, `VAPA_EXEC_LOG.md` |
-| Test Agent | Verification | `TEST_REPORT.md` |
+| Test Agent | Verification, including visual evidence | `TEST_REPORT.md`, `evidence/` |
 | PR Agent | PR draft | `PR_DRAFT.md` |
 
 When true multi-agent execution is unavailable, simulate these roles sequentially in one session and keep the same artifacts.
+
+## Issue Status Sync and Progress Reporting
+
+VAPA replaces reporting with transparency; the issue must reflect execution reality:
+
+- When implementation starts, set `status: in-progress` on the issue (or ask the user to, if the Agent lacks permission).
+- Post a progress comment on the issue at meaningful transitions: execution started (with workspace path and branch), blocked (with the specific decision needed), and tested/audit-ready (with a summary and evidence pointers).
+- When blocked, the issue comment is the canonical record of the blocker — not just the workspace log.
+- After audit returns `READY_FOR_PR`, the issue moves toward `status: in-validation` as part of PR submission.
 
 ## Safety and Traceability
 
@@ -193,6 +324,7 @@ When true multi-agent execution is unavailable, simulate these roles sequentiall
 - If sensitive information appears in an issue, summarize it and record the redaction in `source-map.md`.
 - Do not delete or rewrite workspace artifacts to hide mistakes. Append corrections or add a new section explaining the revision.
 - Do not expand scope just because implementation is easy. Scope changes require human approval or a proposal update.
+- If the default branch moves significantly during execution, rebase or merge deliberately, re-run the impacted tests, and record the event in `VAPA_EXEC_LOG.md`.
 
 ## Handoff to Audit
 
@@ -200,25 +332,36 @@ After implementation and tests, invoke or recommend `vapa-audit` with the worksp
 
 The handoff is ready only when these files exist:
 
+- `state.json` (phase: `tested`)
 - `issue-brief.md`
 - `source-map.md`
 - `readiness-report.md`
+- `codebase-survey.md`
 - `VAPA_EXEC_PLAN.md`
 - `VAPA_EXEC_LOG.md`
 - `TEST_REPORT.md`
 - `PR_DRAFT.md`
+- `ui-spec.md` and `evidence/` when the task touches UI
+- `decomposition.md` when the task was decomposed
 
 Expected audit verdicts:
 
 - `READY_FOR_PR`: move toward human validation and PR submission.
-- `NEEDS_REVISION`: return to implementation or test.
+- `NEEDS_REVISION`: return to implementation or test; increment `revision_count` and respect the revision budget.
 - `BLOCKED_FOR_HUMAN_DECISION`: stop and ask the human to decide.
 
 ## Common Mistakes / Red Flags
 
-- Starting code edits before `readiness-report.md` and `VAPA_EXEC_PLAN.md` exist.
-- Treating comments as optional context.
-- Using `/tmp` as the only execution record.
+- Starting code edits before `readiness-report.md`, `codebase-survey.md`, and `VAPA_EXEC_PLAN.md` exist.
+- Treating comments or design screenshots as optional context.
+- Planning file changes without surveying existing patterns, then fighting the architecture mid-implementation.
+- Inventing new components, styles, or utilities when the codebase already has an equivalent.
+- Implementing only the happy-path UI state and ignoring loading, empty, error, and disabled states.
+- Claiming a UI acceptance criterion passes without rendered visual evidence.
+- Using `/tmp` as the only execution record, or losing resumability because `state.json` was never updated.
 - Losing track of acceptance criteria during implementation.
+- Executing an L/XL task in one session because decomposition felt like overhead.
+- Iterating on `NEEDS_REVISION` indefinitely instead of escalating a broken assumption.
+- Leaving the issue silent for the whole execution — no status label, no progress comments.
 - Auditing your own work without writing a separate audit artifact.
 - Preparing a PR that lacks traceability back to the proposal.
