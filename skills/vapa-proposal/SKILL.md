@@ -138,14 +138,28 @@ Then ask:
 
 ### Step 7: Submit
 
-Write the final body to a temporary file and invoke the submission backend:
+Write the final body to a unique temporary file and invoke the submission backend.
+
+First create a per-proposal temp file (never reuse a fixed path — concurrent or back-to-back proposals would otherwise clobber each other or leak stale content into the new submission):
+
+```bash
+BODY_FILE=$(mktemp /tmp/vep-body-XXXXXXXX.md)
+```
+
+Write the final body to `$BODY_FILE`, then submit:
 
 ```bash
 ${CLAUDE_SKILL_DIR}/scripts/vapa-proposal.sh \
   --repo <owner/repo> \
   --subject "<user subject>" \
-  --body-file /tmp/vep-body.md \
+  --body-file "$BODY_FILE" \
   --type "<type>"
+```
+
+After the script exits (success or failure), remove the temp file:
+
+```bash
+rm -f "$BODY_FILE"
 ```
 
 On success, report the created issue URL and VEP number.
