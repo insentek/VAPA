@@ -29,61 +29,6 @@ if parse_issue_ref "not-an-issue" >/dev/null 2>&1; then
   ((failures++)) || true
 fi
 
-# ── decide_label_action matrix ──────────────────────────────────
-
-assert_eq "transition" \
-  "$(decide_label_action "status: ready-for-review")" \
-  "ready-for-review triggers transition"
-
-assert_eq "noop:already-in-review" \
-  "$(decide_label_action "status: in-review")" \
-  "in-review is a no-op"
-
-assert_eq "noop:proposer-not-ready" \
-  "$(decide_label_action "status: draft")" \
-  "draft is comment-only"
-
-assert_eq "noop:proposer-not-ready" \
-  "$(decide_label_action "status: refining")" \
-  "refining is comment-only"
-
-for label in "status: approved" "status: rejected" "status: done" \
-             "status: in-progress" "status: in-validation" "status: deferred"; do
-  assert_eq "noop:decision-or-later-state" \
-    "$(decide_label_action "$label")" \
-    "$label must never be touched by automation"
-done
-
-# Substring safety: a label like "status: ready-for-review-later" must not match.
-assert_eq "noop:decision-or-later-state" \
-  "$(decide_label_action "status: ready-for-review-later")" \
-  "near-miss label name does not trigger transition"
-
-# ── find_review_comment marker detection (mocked gh) ────────────
-
-gh() {
-  cat <<'JSON'
-[
-  {"id": 101, "body": "human comment"},
-  {"id": 102, "body": "<!-- vapa-review -->\nfirst review round"},
-  {"id": 103, "body": "another human comment"},
-  {"id": 104, "body": "second round\n<!-- vapa-review -->"}
-]
-JSON
-}
-export -f gh
-
-assert_eq "104" "$(find_review_comment "owner/repo" "15")" \
-  "finds the latest comment carrying the marker"
-
-gh() {
-  echo '[{"id": 101, "body": "human comment"}]'
-}
-export -f gh
-
-assert_eq "" "$(find_review_comment "owner/repo" "15")" \
-  "no marker -> empty output"
-
 # ── fetch_context requests the full field set (mocked gh) ───────
 
 gh() {
@@ -97,13 +42,24 @@ assert_eq "issue view 15 --repo owner/repo --json number,title,state,url,author,
   "$ctx_args" \
   "context fetches body AND comments AND labels in one call"
 
-# ── body file validation ────────────────────────────────────────
+# ── read-only guarantee: no write operations anywhere ───────────
 
-# Run in a subshell: require_body_file exits non-zero on failure, and we want
-# the subshell to die, not this test script.
-BODY_FILE="/nonexistent/review.md"
-if ( require_body_file ) >/dev/null 2>&1; then
-  echo "FAIL: missing body file should be rejected"
+script_path="$PROJECT_DIR/skills/vapa-review/scripts/vapa-review.sh"
+for forbidden in "issue comment" "issue edit" "method PATCH" "method POST" "method DELETE" "--add-label" "--remove-label"; do
+  if grep -q -- "$forbidden" "$script_path"; then
+    echo "FAIL: read-only backend must not contain '$forbidden'"
+    ((failures++)) || true
+  fi
+done
+
+# ── unknown commands are rejected ───────────────────────────────
+
+if ( parse_args post --issue 15 ) >/dev/null 2>&1; then
+  echo "FAIL: removed 'post' command must be rejected"
+  ((failures++)) || true
+fi
+if ( parse_args start --issue 15 ) >/dev/null 2>&1; then
+  echo "FAIL: removed 'start' command must be rejected"
   ((failures++)) || true
 fi
 

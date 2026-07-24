@@ -14,26 +14,27 @@ Closes #15
 
 ## Implementation summary
 
-Adds the `vapa-review` skill approved in VEP-0004. Given an issue number or URL,
-the skill fetches the issue's full body and all comments via `gh`, assesses the
-proposal against the framework's five review questions (Layer 3.3) and quality
-checklist (Layer 2.3) with quoted evidence, auto-posts a structured review
-comment, and syncs the review-start label (`status: ready-for-review` →
-`status: in-review`). Re-runs are idempotent via a hidden `<!-- vapa-review -->`
-marker: unchanged conclusions update the existing comment, materially changed
-conclusions start a new round. The skill is advisory only — it never edits the
-issue body and never touches decision labels.
+> **Revision 2026-07-24 (owner directive)**: the skill is now **read-only** — the
+> review is presented to the user in the conversation; nothing is posted to the
+> issue and no labels are changed. This amends AC4 of VEP-0004 by owner decision.
+
+Adds the `vapa-review` skill approved in VEP-0004 (as amended). Given an issue
+number or URL, the skill fetches the issue's full body and all comments via
+`gh`, assesses the proposal against the framework's five review questions
+(Layer 3.3) and quality checklist (Layer 2.3) with quoted evidence, and
+presents a structured review report to the user. The skill never edits the
+issue body, never posts comments, and never touches labels — publishing a
+review to the issue is an explicit human copy-paste decision.
 
 Components:
 
-- `skills/vapa-review/SKILL.md` — 7-step workflow (detect → fetch → assess →
-  idempotency check → label sync → publish → report)
-- `skills/vapa-review/scripts/vapa-review.sh` — backend: `context`,
-  `find-comment`, `post`, `update`, `start`
+- `skills/vapa-review/SKILL.md` — 4-step read-only workflow (detect → fetch →
+  assess → present)
+- `skills/vapa-review/scripts/vapa-review.sh` — read-only backend, single
+  `context` command
 - `skills/vapa-review/references/review-comment.md` — structured review template
-- `tests/test-vapa-review.sh` — mocked-`gh` unit tests (issue-ref parsing, label
-  decision matrix incl. near-miss safety, marker detection, context field set,
-  body-file validation)
+- `tests/test-vapa-review.sh` — mocked-`gh` unit tests (issue-ref parsing,
+  context field set, read-only grep guard, removed-command rejection)
 - README.md + docs/framework.md — skill table rows and quick-start flow
 
 ## Acceptance criteria mapping
@@ -43,7 +44,7 @@ Components:
 | 可通过 npx skills add 安装；接受编号或 URL | 标准 skill 布局 `skills/vapa-review/`；`parse_issue_ref` | ✅（安装需合并后验证） |
 | gh 抓取完整正文与全部评论 | `fetch_context` 单次调用含 body+comments+labels | ✅ |
 | 评论覆盖评审五问与自检清单并引用具体内容 | `references/review-comment.md` + SKILL.md Step 3 | ✅ |
-| 自动发布评论；按阶段更新标签；重复运行不刷屏 | `post`/`update`/`start`/`find-comment` + marker | ✅（live 端到端未跑，见局限） |
+| 自动发布评论；按阶段更新标签；重复运行不刷屏 | **已由所有者修订**：技能改为只读，评审仅输出给用户，不发布评论、不改标签 | ✅（按修订后范围） |
 | 不修改正文、不设置决策性状态 | 后端无 body/title 编辑；决策标签一律 noop | ✅ |
 | README 与 framework.md 同步 | 两个文件各加一行 + README 快速开始流程 | ✅ |
 

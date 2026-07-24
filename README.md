@@ -30,7 +30,7 @@ The full framework specification lives in [docs/framework.md](docs/framework.md)
 |---|---|
 | `vapa-init` | Initialize VAPA labels, issue templates, and repository configuration for a GitHub project. |
 | `vapa-proposal` | Turn an idea into a structured VAPA proposal and submit it as a GitHub Issue. |
-| `vapa-review` | Review a proposal issue in full (body + comments) against the framework's review questions, auto-post a structured review comment, and sync status labels. Advisory only — never approves or rejects. |
+| `vapa-review` | Review a proposal issue in full (body + comments) against the framework's review questions and present a structured review to the user. Read-only — never posts comments or changes labels. |
 | `vapa-exec` | Execute an approved proposal through a traceable project-local Agent workspace. |
 | `vapa-audit` | Independently audit Agent implementation, tests, scope, traceability, and PR readiness. |
 
