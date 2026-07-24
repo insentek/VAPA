@@ -1,21 +1,27 @@
 ---
 name: vapa-review
-description: Review a VAPA proposal issue in full (body + all comments) against the framework's five review questions and quality checklist, auto-post a structured review comment, and sync status labels. Advisory only — never makes approve/reject decisions.
+description: Review a VAPA proposal issue in full (body + all comments) against the framework's five review questions and quality checklist, and present the structured review to the user. Read-only — never posts comments, never changes labels, never edits the issue.
 disable-model-invocation: true
 allowed-tools: Bash(git remote get-url origin) Bash(${CLAUDE_SKILL_DIR}/scripts/vapa-review.sh *) Read Write AskUserQuestion
 ---
 
 # /vapa-review
 
-Review a VAPA proposal issue end-to-end and publish the review as a structured
-issue comment. The skill reads the **complete** issue — body and every comment —
-assesses it against the framework's review five questions (Layer 3.3) and the
-proposal quality checklist (Layer 2.3), posts the review automatically, and syncs
-the `status:*` label when a review formally starts.
+Review a VAPA proposal issue end-to-end and present the review **to the user,
+in the conversation**. The skill reads the **complete** issue — body and every
+comment — and assesses it against the framework's review five questions
+(Layer 3.3) and the proposal quality checklist (Layer 2.3).
 
-The review is **advisory**: it gives the review committee a consistent,
-evidence-backed baseline. It never sets `status: approved`, `status: rejected`,
-or any other decision label, and never edits the issue body.
+The skill is strictly **read-only**:
+
+- It never posts comments to the issue.
+- It never adds, removes, or changes labels.
+- It never edits the issue body.
+
+The review is advice for the human reading it. If the user wants the review
+published as an issue comment, they can copy it themselves — that is a human
+publishing decision, not something this skill automates. Approve / reject /
+defer decisions always belong to the human review committee.
 
 ## Usage
 
@@ -26,10 +32,8 @@ or any other decision label, and never edits the issue body.
 
 ## Requirements
 
-- `gh` CLI installed and authenticated with permission to comment on and label
-  issues in the target repo.
+- `gh` CLI installed and authenticated with **read** access to the target repo.
 - Run from inside a git repo, or set `VAPA_REPO=owner/repo`.
-- The repo should carry the VAPA `status:*` label taxonomy (see `vapa-init`).
 
 ## Execution
 
@@ -78,83 +82,33 @@ Evaluate the issue against the template at
 Write the review in the issue's dominant language (Chinese issue → Chinese
 review, English issue → English review).
 
-### Step 4: Check for a previous review (idempotency)
+### Step 4: Present the review to the user
 
-```bash
-${CLAUDE_SKILL_DIR}/scripts/vapa-review.sh find-comment --issue <ref> --repo <owner/repo>
+Output the complete filled-in review directly in the conversation, preceded by
+a one-line header:
+
+```
+🔍 VAPA 评审结果 — <owner/repo>#<number>（status: <current>）
 ```
 
-- **No output** → this is the first review round. Proceed to Step 5.
-- **A comment ID** → a previous `vapa-review` comment exists. Compare your new
-  conclusions with it:
-  - *Conclusions materially unchanged* → update the existing comment in place
-    (Step 6, update mode). Do not add a new comment.
-  - *Conclusions changed, or the proposal was revised since* → post a new round
-    (Step 6, post mode), filling in the "评审轮次" line and summarizing what
-    changed relative to the previous round.
+Do not post it anywhere. After the review, add one closing line summarizing the
+overall conclusion and the single most important gap (if any).
 
-Never post a duplicate review. The hidden marker `<!-- vapa-review -->` (already
-in the template) is how re-runs recognize their own comments — keep it as the
-first line of the body.
-
-### Step 5: Sync the review-start label
-
-Only on the **first** review round:
-
-```bash
-${CLAUDE_SKILL_DIR}/scripts/vapa-review.sh start --issue <ref> --repo <owner/repo>
-```
-
-The backend applies exactly one automated transition:
-`status: ready-for-review` → `status: in-review`. Every other state is left
-untouched (draft/refining get comment-only reviews; decision and later states
-are human-owned). Report what the command printed.
-
-### Step 6: Publish the review
-
-Write the final comment body to a unique temp file (never a fixed path —
-concurrent reviews must not clobber each other):
-
-```bash
-BODY_FILE=$(mktemp /tmp/vapa-review-XXXXXXXX)
-```
-
-First round (or materially changed conclusions):
-
-```bash
-${CLAUDE_SKILL_DIR}/scripts/vapa-review.sh post --issue <ref> --body-file "$BODY_FILE" --repo <owner/repo>
-```
-
-Unchanged conclusions on re-run:
-
-```bash
-${CLAUDE_SKILL_DIR}/scripts/vapa-review.sh update --comment-id <id> --body-file "$BODY_FILE" --repo <owner/repo>
-```
-
-Then clean up:
-
-```bash
-rm -f "$BODY_FILE"
-```
-
-### Step 7: Report
-
-Summarize for the user: the checklist verdicts, the five-question highlights,
-the overall advisory conclusion, what label action (if any) was taken, and
-whether a new comment was posted or an existing one updated.
+If the user then asks to publish the review as an issue comment, remind them
+this skill is read-only by design; they may paste it manually, or ask to change
+the skill's scope through a proposal update.
 
 ## Output handling
 
-- On success, report the advisory conclusion and the review comment location.
+- On success, the review appears in the conversation; nothing is written to
+  GitHub.
 - On failure, show the script output and explain the likely cause (missing `gh`
   auth, bad issue reference, no repo detected).
-- The skill never edits the issue body and never sets decision labels
-  (`approved` / `rejected` / `deferred` / `done`). If the user asks for those,
-  explain that they are human committee actions and stop.
 
 ## References
 
-- Review comment template: `${CLAUDE_SKILL_DIR}/references/review-comment.md`
-- Backend: `${CLAUDE_SKILL_DIR}/scripts/vapa-review.sh`
+- Review output template: `${CLAUDE_SKILL_DIR}/references/review-comment.md`
+- Backend: `${CLAUDE_SKILL_DIR}/scripts/vapa-review.sh` (read-only; the only
+  command is `context`)
 - Review criteria source: `docs/framework.md` Layer 2.3 (quality checklist) and
   Layer 3.3 (review five questions)

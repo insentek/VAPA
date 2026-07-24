@@ -57,6 +57,26 @@ None encountered.
 - Issue #15 synced: `status: in-progress` → `status: in-validation`, with a
   comment linking the PR.
 
+## Scope revision (2026-07-24, appended)
+
+**Owner decision**: `vapa-review` must be read-only — output the review to the
+user only; never post comments to the proposal Issue. This reverses the
+proposal-clarification decision "fully automatic posting" and implicitly drops
+label sync (labels only made sense alongside posting). AC4 of VEP-0004 is
+thereby amended by owner directive; comment + label automation removed.
+
+Changes made:
+- Backend stripped to a single read-only `context` command (post / update /
+  start / find-comment / decide_label_action removed).
+- SKILL.md rewritten: fetch → assess → present in conversation; explicit
+  read-only guarantees; publishing is a human copy-paste decision.
+- Template: review marker and round-tracking wording removed; footer states
+  local-only output.
+- Tests rewritten: write-operation grep guard, removed-command rejection,
+  context field set, ref parsing.
+- README / framework.md rows updated to "read-only" wording.
+- PR #17 body and issue #15 updated to reflect the new scope.
+
 ## Follow-up items deferred out of scope
 
 - Multi-reviewer committee orchestration (proposal non-goal; now tracked in
