@@ -82,6 +82,16 @@ Evaluate the issue against the template at
 Write the review in the issue's dominant language (Chinese issue → Chinese
 review, English issue → English review).
 
+### Sub-issues and defect issues
+
+- When the reviewed issue is a sub-issue of a decomposed parent (linked via the
+  tracker's parent-child relationship), findings belong to the parent's
+  decomposition plan: recommend escalating to the parent issue rather than
+  having the sub-issue change direction on its own.
+- Defect issues (lightweight template: symptom / expected behavior /
+  reproduction steps / source) are reviewed with focus on reproducibility and
+  a verifiable acceptance criterion — "symptom eliminated without regression".
+
 ### Step 4: Present the review to the user
 
 Output the complete filled-in review directly in the conversation, preceded by

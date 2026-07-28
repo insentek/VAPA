@@ -1,6 +1,6 @@
 ---
 name: vapa-audit
-description: Use after VAPA execution to independently audit implementation, tests, scope, traceability, and PR readiness. Produces VAPA_AUDIT.md and returns READY_FOR_PR, NEEDS_REVISION, or BLOCKED_FOR_HUMAN_DECISION.
+description: Use after VAPA execution to independently audit implementation, tests, scope, traceability, and PR readiness. Produces VAPA_AUDIT.md and returns READY_FOR_PR, READY_TO_INTEGRATE (sub-issues of decomposed tasks), NEEDS_REVISION, or BLOCKED_FOR_HUMAN_DECISION.
 ---
 
 # VAPA Audit
@@ -56,10 +56,15 @@ Return exactly one verdict in `VAPA_AUDIT.md`:
 | Verdict | Meaning | Next Step |
 |---|---|---|
 | `READY_FOR_PR` | Implementation, tests, traceability, and PR draft are sufficient for human validation | Move to `status: in-validation` or open PR |
+| `READY_TO_INTEGRATE` | Sub-level verdict for decomposed tasks: the sub-issue's work may be merged back into the parent branch. Never treated as PR readiness | Orchestrator merges the worktree into the parent branch |
 | `NEEDS_REVISION` | Agent can fix the identified issues without a product/vision decision | Return to `vapa-exec` implementation or test phase |
 | `BLOCKED_FOR_HUMAN_DECISION` | Direction, scope, acceptance criteria, or risk requires human judgment | Stop and ask the human to decide |
 
 ## Audit Flow
+
+### Step 0: Decomposition Pre-Check (parent issues of decomposed tasks)
+
+If the audit target is the parent issue of a decomposed task, read the parent `state.json` before anything else. If any sub-issue has not reached `READY_TO_INTEGRATE` or has not been merged back into the parent branch, do not start the audit: return a not-ready list with each sub-issue's current state. This is not a formal verdict — write no `VAPA_AUDIT.md`, do not touch `revision_count`, and do not consume revision budget. An unfinished decomposition is a scheduling fact, not an implementation defect.
 
 ### Step 1: Validate Workspace Completeness
 
@@ -140,9 +145,12 @@ If rendering was impossible in the execution environment, the gap must be explic
 
 When the work was executed as sub-issues per `decomposition.md`:
 
-- Each sub-issue has its own complete workspace and, where required, its own audit.
+- Each sub-issue has its own complete workspace and its own audit with a `READY_TO_INTEGRATE` verdict.
+- The tracker-level parent-child linkage exists and matches `decomposition.md` in sub-issue count and numbering (on GitHub, the native sub-issue relationship; elsewhere, the documented fallback). Drift between the tracker and `decomposition.md` is a finding.
 - The cross-cutting contracts defined in the parent plan were respected by all sub-implementations.
-- An integration pass was run after the last sub-issue: full test suite results are recorded in the parent `TEST_REPORT.md`.
+- Sub-issue work was merged back into the parent branch by the orchestrator, in an order respecting the DAG — dependencies merged before their dependents' work began.
+- Spot-check the parent issue's roll-up comments against the actual execution state recorded in sub-workspaces.
+- An integration pass was run after the last merge-back: full test suite results are recorded in the parent `TEST_REPORT.md`.
 - The parent issue's acceptance criteria are traced against the integrated whole, not just the union of sub-issue claims.
 
 ### Step 6: Review PR Draft
@@ -171,7 +179,7 @@ Required format:
 # VAPA Audit Report
 
 ## Verdict
-READY_FOR_PR | NEEDS_REVISION | BLOCKED_FOR_HUMAN_DECISION
+READY_FOR_PR | READY_TO_INTEGRATE | NEEDS_REVISION | BLOCKED_FOR_HUMAN_DECISION
 
 ## Summary
 [One paragraph summary of the audit result.]
@@ -217,6 +225,10 @@ READY_FOR_PR | NEEDS_REVISION | BLOCKED_FOR_HUMAN_DECISION
 - `P2`: Should fix, but may not block validation if documented.
 - `P3`: Nice-to-have cleanup or clarity improvement.
 
+## Delta Re-Audit
+
+Any code change after an audit verdict — including defect-fix rounds run by `vapa-exec` — invalidates that verdict. Re-audit the changed surface plus regression evidence and issue a revised `VAPA_AUDIT.md`. Delta re-audits do not increment `revision_count`; defect-fix rounds are tracked separately by `defect_fix_rounds` in `state.json`.
+
 ## Common Mistakes / Red Flags
 
 - Trusting `VAPA_EXEC_LOG.md` without inspecting the diff.
@@ -225,6 +237,9 @@ READY_FOR_PR | NEEDS_REVISION | BLOCKED_FOR_HUMAN_DECISION
 - Skipping the `ui-spec.md` and `evidence/` checks because the diff "looks like a small UI change".
 - Ignoring architecture conformance — new bespoke components or undeclared contract changes slipping through as style preferences.
 - Auditing a decomposed task's sub-issues individually but never checking the integrated whole.
+- Auditing a decomposed parent and returning `NEEDS_REVISION` when sub-issues are not all `READY_TO_INTEGRATE` — return the not-ready list instead, without writing `VAPA_AUDIT.md`.
+- Verifying workspace artifacts but not the tracker-level parent-child linkage against `decomposition.md`.
+- Reusing a stale verdict after post-audit code changes instead of running a delta re-audit.
 - Returning `NEEDS_REVISION` a third time for the same finding instead of escalating to a human.
 - Allowing scope expansion because the implementation looks useful.
 - Marking `READY_FOR_PR` while PR body lacks traceability.
