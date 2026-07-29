@@ -44,11 +44,15 @@ The current state must always be recoverable from the workspace alone. Any sessi
 
 ## Required Workspace
 
-Create a workspace at:
+Ensure a workspace exists at:
 
 ```text
 .vapa/vapa-exec-<issue-id>/workspace/
 ```
+
+Create it if missing. If `vapa-design` ran first, the workspace already exists
+with a `design/` archive of the confirmed design comments — reuse it and never
+wipe or restart it.
 
 Use the GitHub issue number as `<issue-id>` when available. If the source is not GitHub, use a stable slug such as `<host>-<project>-<id>`.
 
@@ -75,6 +79,7 @@ Conditional artifacts:
 
 - `ui-spec.md` — required whenever the change touches user-facing UI (see Frontend Execution Requirements).
 - `decomposition.md` — required whenever the task is executed as decomposed sub-issues (see Decomposition Protocol).
+- `design/` — present when `vapa-design` ran before execution: the archived bodies of the confirmed design comments. The issue comments remain the canonical record; treat this directory as read-only input for the brief and plan.
 
 `VAPA_AUDIT.md` is produced by `vapa-audit` after implementation and tests are complete.
 
@@ -94,7 +99,7 @@ Keep a small machine-readable tracker so execution can be resumed and orchestrat
 }
 ```
 
-Update `state.json` at every phase transition. If a session starts and `state.json` already exists, resume from the recorded phase instead of restarting; verify the recorded branch and the latest artifacts before continuing.
+Update `state.json` at every phase transition. If a session starts and `state.json` already exists, resume from the recorded phase instead of restarting; verify the recorded branch and the latest artifacts before continuing. If the workspace exists but has no `state.json` — typically because `vapa-design` created it to archive confirmed designs — start a fresh execution and treat the existing `design/` archive as input, not as prior execution state.
 
 For decomposed tasks (see Decomposition Protocol), the parent workspace extends the schema:
 

@@ -26,11 +26,33 @@ structures, API signatures, interaction flows). `vapa-exec` produces the
 **how** — implementation steps, file changes, test strategy. Do not drift into
 file-level implementation planning here.
 
-The skill writes issue comments but is otherwise read-only:
+The skill writes issue comments and archives them in the per-issue workspace,
+but otherwise changes nothing:
 
 - It never edits the issue body, never changes labels, never touches code.
 - It never posts a design the user has not explicitly confirmed.
 - It never edits an existing design comment — amendments are new comments.
+
+## Workspace
+
+Design artifacts live in the same per-issue workspace that `vapa-exec` later
+uses:
+
+```text
+.vapa/vapa-exec-<issue-id>/workspace/
+  design/
+    <slug>-v<n>.md     # archived body of each confirmed design comment
+    summary.md          # archived body of the design summary comment
+```
+
+Design usually runs before `vapa-exec`, so it may be the workspace's first
+writer. Check whether the workspace exists first: reuse it if it does, create
+it if it does not. Add only the `design/` subdirectory — `state.json` and all
+other artifacts belong to `vapa-exec`; never create or modify them here.
+
+The issue comments remain the canonical record; the local archive keeps the
+design traceable in the repo and lets `vapa-exec` quote confirmed designs
+without re-fetching every comment.
 
 ## Usage
 
@@ -74,7 +96,9 @@ everything before proposing anything:
 2. **Existing design comments**: scan the comments for `<!-- vapa-design:` markers.
    Items with a `status=confirmed` marker are settled contract — do not redesign
    them unless the user explicitly asks; when several versions of the same item
-   exist, the highest `v=` wins.
+   exist, the highest `v=` wins. If a local
+   `.vapa/vapa-exec-<issue-id>/workspace/design/` archive exists, read it
+   alongside the comments.
 3. `VISION.md` from the repository root (if present) — the design must align
    with it; contradictions are raised to the user, never silently resolved.
 4. A lightweight codebase survey: the modules the proposal plausibly touches,
@@ -131,9 +155,16 @@ For each confirmed checklist item, in order:
    identifier per item (e.g. `data-model`, `api-contract`), and `<n>` starts at
    1.
 
+   Archive the comment body as
+   `.vapa/vapa-exec-<issue-id>/workspace/design/<slug>-v<n>.md` (create the
+   workspace and `design/` directory first if they do not exist), then post it:
+
    ```bash
-   gh issue comment <ref> --repo <owner/repo> --body-file <file>
+   gh issue comment <ref> --repo <owner/repo> --body-file <archived-file>
    ```
+
+   Keep the archived file after posting — it is the local design record, not a
+   temp file.
 
 4. Move to the next item.
 
@@ -148,6 +179,9 @@ When every checklist item is confirmed, post one summary comment:
 - the checklist with each item's status and a link to its design comment;
 - open questions deliberately left for review or execution;
 - a note that review (`vapa-review`) can now evaluate proposal + design together.
+
+Archive the summary body as `design/summary.md` in the workspace before
+posting, same as the per-item comments.
 
 ## Output handling
 
@@ -171,3 +205,8 @@ When every checklist item is confirmed, post one summary comment:
 - Growing the design-item checklist mid-session without user approval.
 - Designing around an existing pattern the codebase already has, instead of
   extending it.
+- Writing comment bodies to the `.vapa/` root, a temp directory, or any
+  location other than the workspace `design/` archive — or deleting the
+  archive after posting.
+- Creating `state.json` or other `vapa-exec` artifacts during design; design
+  adds only the `design/` subdirectory to the workspace.

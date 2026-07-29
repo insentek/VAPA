@@ -22,6 +22,8 @@ Agent audit gives confidence. Human validation gives authority.
 
 If there is no implementation yet, use `vapa-exec`. If there is no approved proposal, use `vapa-proposal` or a future `vapa-review` skill.
 
+The audit never creates the workspace. If `.vapa/vapa-exec-<issue-id>/workspace/` does not exist, no execution has happened — stop and direct the user to `vapa-exec` instead of auditing an empty directory.
+
 ## Required Inputs
 
 Audit from the execution workspace:
@@ -44,6 +46,7 @@ Conditional inputs, required when applicable:
 
 - `ui-spec.md` — required when the change touches user-facing UI.
 - `decomposition.md` — required in the parent workspace when the task was executed as decomposed sub-issues.
+- `design/` — present when `vapa-design` ran before execution: the archived bodies of the confirmed design comments. Use it to cross-check the confirmed designs quoted in the brief against what was actually posted on the issue.
 
 Also inspect the actual repository diff and relevant files. Do not rely only on the execution log.
 
