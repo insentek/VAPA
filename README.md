@@ -31,6 +31,7 @@ The full framework specification lives in [docs/framework.md](docs/framework.md)
 | `vapa-init` | Initialize VAPA labels, issue templates, and repository configuration for a GitHub project. |
 | `vapa-proposal` | Turn an idea into a structured VAPA proposal and submit it as a GitHub Issue. |
 | `vapa-review` | Review a proposal issue in full (body + comments) against the framework's review questions and present a structured review to the user. Read-only — never posts comments or changes labels. |
+| `vapa-design` | Interactively design a proposal's solution (data, APIs, frontend flows, etc.) item by item with the user, posting each confirmed design as an issue comment. |
 | `vapa-exec` | Execute an approved proposal through a traceable project-local Agent workspace. |
 | `vapa-audit` | Independently audit Agent implementation, tests, scope, traceability, and PR readiness. |
 
@@ -48,6 +49,7 @@ Install a single skill:
 npx skills add insentek/VAPA@vapa-init
 npx skills add insentek/VAPA@vapa-proposal
 npx skills add insentek/VAPA@vapa-review
+npx skills add insentek/VAPA@vapa-design
 npx skills add insentek/VAPA@vapa-exec
 npx skills add insentek/VAPA@vapa-audit
 ```
@@ -59,15 +61,17 @@ npx skills add insentek/VAPA@vapa-audit
 3. Ask the agent to run `vapa-init` to configure labels and issue templates.
 4. Create or fill `VISION.md` so proposals have a strategic reference point.
 5. Use `vapa-proposal` to create proposals.
-6. Use `vapa-review` to generate a structured review baseline on proposal issues.
-7. After review and approval, use `vapa-exec` to implement approved work.
-8. Use `vapa-audit` before PR submission or human validation.
+6. Use `vapa-design` to work through the solution design with the user; confirmed designs are recorded as issue comments.
+7. Use `vapa-review` to generate a structured review baseline on proposal issues.
+8. After review and approval, use `vapa-exec` to implement approved work.
+9. Use `vapa-audit` before PR submission or human validation.
 
 Typical flow:
 
 ```text
 vapa-init
   -> vapa-proposal
+  -> vapa-design
   -> vapa-review
   -> human / team review
   -> vapa-exec
@@ -83,6 +87,7 @@ vapa-init
 │   ├── vapa-init/
 │   ├── vapa-proposal/
 │   ├── vapa-review/
+│   ├── vapa-design/
 │   ├── vapa-exec/
 │   └── vapa-audit/
 ├── docs/

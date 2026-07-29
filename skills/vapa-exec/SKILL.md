@@ -151,6 +151,7 @@ Required checks:
 - For UI work: design references (screenshots, mockups, or an explicit "follow existing design system" instruction) exist, or the gap is recorded as a human decision point.
 - `Size: M` or larger proposals are split into `Size: S` sub-issues, or the reason for continuing is explicitly documented.
 - No new information invalidates the proposal's core assumptions.
+- Design comments: if the task has a non-trivial design surface but no `vapa-design` confirmed design comments exist on the issue, recommend running `vapa-design` first. This is advisory, not blocking.
 - The working tree is clean and based on the latest default branch, or the divergence is recorded.
 
 If any blocking item fails, stop implementation. Produce `readiness-report.md` with `Verdict: BLOCKED` and ask for the missing human decision.
@@ -171,6 +172,8 @@ Write `issue-brief.md` with these sections:
 Every non-obvious claim should point back to `source-map.md`.
 
 Verbatim rule: acceptance criteria, boundary constraints, and "this is not" exclusions must be quoted word-for-word from the issue or comments, each with its source reference. Paraphrasing these three categories is forbidden — the brief may add interpretation next to a quote, but never replace it. These quotes are the contract that planning, implementation, testing, and audit all trace back to.
+
+Confirmed design comments (`<!-- vapa-design: ... status=confirmed -->` markers) are part of that contract: they belong in "Human decisions already made", are quoted verbatim like acceptance criteria, and the plan may not contradict them. When several versions of the same design item exist, the highest `v=` wins.
 
 Coverage self-check: the brief is a lossy summary of `issue.json` and `comments/`, so after writing it, re-read the raw sources and verify the reverse direction — every substantive requirement, constraint, and later-comment amendment either appears in the brief or is explicitly listed in a "Deliberately excluded" note with the reason. `source-map.md` guarantees that brief claims are traceable to sources; this check guarantees that sources are not silently dropped from the brief.
 
