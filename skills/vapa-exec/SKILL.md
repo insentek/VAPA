@@ -44,11 +44,15 @@ The current state must always be recoverable from the workspace alone. Any sessi
 
 ## Required Workspace
 
-Create a workspace at:
+Ensure a workspace exists at:
 
 ```text
 .vapa/vapa-exec-<issue-id>/workspace/
 ```
+
+Create it if missing. If `vapa-design` ran first, the workspace already exists
+with a `design/` archive of the confirmed design comments — reuse it and never
+wipe or restart it.
 
 Use the GitHub issue number as `<issue-id>` when available. If the source is not GitHub, use a stable slug such as `<host>-<project>-<id>`.
 
@@ -74,7 +78,8 @@ Required structure:
 Conditional artifacts:
 
 - `ui-spec.md` — required whenever the change touches user-facing UI (see Frontend Execution Requirements).
-- `decomposition.md` — required whenever the task is executed as decomposed sub-issues (see Large Task Protocol).
+- `decomposition.md` — required whenever the task is executed as decomposed sub-issues (see Decomposition Protocol).
+- `design/` — present when `vapa-design` ran before execution: the archived bodies of the confirmed design comments. The issue comments remain the canonical record; treat this directory as read-only input for the brief and plan.
 
 `VAPA_AUDIT.md` is produced by `vapa-audit` after implementation and tests are complete.
 
@@ -94,7 +99,26 @@ Keep a small machine-readable tracker so execution can be resumed and orchestrat
 }
 ```
 
-Update `state.json` at every phase transition. If a session starts and `state.json` already exists, resume from the recorded phase instead of restarting; verify the recorded branch and the latest artifacts before continuing.
+Update `state.json` at every phase transition. If a session starts and `state.json` already exists, resume from the recorded phase instead of restarting; verify the recorded branch and the latest artifacts before continuing. If the workspace exists but has no `state.json` — typically because `vapa-design` created it to archive confirmed designs — start a fresh execution and treat the existing `design/` archive as input, not as prior execution state.
+
+For decomposed tasks (see Decomposition Protocol), the parent workspace extends the schema:
+
+```json
+{
+  "issue": "42",
+  "mode": "decomposed",
+  "sub_issues": {
+    "43": {"workspace": ".vapa/vapa-exec-43/", "phase": "audited", "audit": "READY_TO_INTEGRATE", "depends_on": ["41"]},
+    "44": {"workspace": ".vapa/vapa-exec-44/", "phase": "implemented", "audit": null, "depends_on": []}
+  },
+  "integration_phase": "pending | integrating | tested",
+  "defect_fix_rounds": 0
+}
+```
+
+A sub-issue workspace adds `"parent": "42"` to its own `state.json`.
+
+State reconciliation: when `vapa-exec` starts on a parent issue, rebuild the aggregate view from the tracker linkage and each sub-workspace's `state.json` rather than trusting the parent's copy — sub-issues may have been executed individually since the parent state was last written. If they disagree, the sub-workspace records win; correct the parent `state.json` and record the reconciliation in `VAPA_EXEC_LOG.md`.
 
 ## Execution Flow
 
@@ -102,7 +126,7 @@ Update `state.json` at every phase transition. If a session starts and `state.js
 
 Before anything else, classify along three axes and record the result in `state.json`:
 
-- **Size**: from the issue's `Size` field, or estimate if absent. This selects the execution mode (see Large Task Protocol).
+- **Size**: from the issue's `Size` field, or estimate if absent. This selects the execution mode (see Decomposition Protocol).
 - **Domain**: frontend, backend, mixed, or docs. Frontend or mixed tasks trigger the Frontend Execution Requirements.
 - **Risk**: does the change touch data models, public APIs, auth, payments, or shared infrastructure? High-risk changes require the extended design section in the plan.
 
@@ -123,7 +147,8 @@ Before implementation, write `readiness-report.md` and decide whether execution 
 
 Required checks:
 
-- Issue is `status: approved`, or the user explicitly authorizes execution.
+- Issue is `status: approved`, or it is a sub-issue listed in the `decomposition.md` of an approved parent issue (the parent's approval covers it), or the user explicitly authorizes execution.
+- Defect-fix round: when re-entering an issue whose execution previously concluded because of new defect comments (see Defect Handling), enumerate the defect comments added since the last run and get the human's confirmation of the fix list before implementation.
 - Agent execution readiness checklist exists in the issue body or comments, or the user explicitly accepts the missing checklist.
 - Acceptance criteria are concrete enough to test or manually verify.
 - Boundaries are stated: what must not change, compatibility requirements, and out-of-scope work.
@@ -131,6 +156,7 @@ Required checks:
 - For UI work: design references (screenshots, mockups, or an explicit "follow existing design system" instruction) exist, or the gap is recorded as a human decision point.
 - `Size: M` or larger proposals are split into `Size: S` sub-issues, or the reason for continuing is explicitly documented.
 - No new information invalidates the proposal's core assumptions.
+- Design comments: if the task has a non-trivial design surface but no `vapa-design` confirmed design comments exist on the issue, recommend running `vapa-design` first. This is advisory, not blocking.
 - The working tree is clean and based on the latest default branch, or the divergence is recorded.
 
 If any blocking item fails, stop implementation. Produce `readiness-report.md` with `Verdict: BLOCKED` and ask for the missing human decision.
@@ -151,6 +177,8 @@ Write `issue-brief.md` with these sections:
 Every non-obvious claim should point back to `source-map.md`.
 
 Verbatim rule: acceptance criteria, boundary constraints, and "this is not" exclusions must be quoted word-for-word from the issue or comments, each with its source reference. Paraphrasing these three categories is forbidden — the brief may add interpretation next to a quote, but never replace it. These quotes are the contract that planning, implementation, testing, and audit all trace back to.
+
+Confirmed design comments (`<!-- vapa-design: ... status=confirmed -->` markers) are part of that contract: they belong in "Human decisions already made", are quoted verbatim like acceptance criteria, and the plan may not contradict them. When several versions of the same design item exist, the highest `v=` wins.
 
 Coverage self-check: the brief is a lossy summary of `issue.json` and `comments/`, so after writing it, re-read the raw sources and verify the reverse direction — every substantive requirement, constraint, and later-comment amendment either appears in the brief or is explicitly listed in a "Deliberately excluded" note with the reason. `source-map.md` guarantees that brief claims are traceable to sources; this check guarantees that sources are not silently dropped from the brief.
 
@@ -193,7 +221,7 @@ Required sections:
 
 For UI work, the plan must reference `ui-spec.md` (see Frontend Execution Requirements) and map acceptance criteria to concrete screens and states.
 
-For `Size: S`, a single session may plan and implement inline. For `Size: M`, prefer separate Planner, Implementation, and Audit roles. For `Size: L` or `XL`, follow the Large Task Protocol.
+For `Size: S`, a single session may plan and implement inline. For `Size: M`, prefer separate Planner, Implementation, and Audit roles. For `Size: L` or `XL`, follow the Decomposition Protocol.
 
 ### Step 6: Implement
 
@@ -201,7 +229,8 @@ Implement according to the plan. Keep changes scoped to the approved proposal.
 
 Git discipline:
 
-- Work on a dedicated branch named `vapa/<issue-id>-<slug>` unless the repository has its own convention.
+- One issue, one branch: work on a dedicated branch named `vapa/<issue-id>-<slug>` unless the repository has its own convention. Sub-issues of a decomposed task do not get their own branches — their work lands on the parent's branch (see Decomposition Protocol).
+- Parallel sub-issue work happens in separate worktrees; the orchestrator merges a sub-issue's work back into the parent branch with commits referencing the sub-issue number, and only after the sub-issue's audit returns `READY_TO_INTEGRATE`. Sub-agents never write to the parent branch directly.
 - Commit in coherent, buildable increments that follow the plan's implementation steps. Reference the issue number in commit messages.
 - Commit workspace artifact updates together with the implementation steps they describe.
 
@@ -252,9 +281,11 @@ Write `PR_DRAFT.md` with:
 - VAPA workspace path
 - Suggested contribution records
 
+For decomposed tasks, organize the implementation summary and acceptance criteria mapping by sub-issue, so human reviewers can review the PR segment by segment.
+
 Do not claim the work is ready for PR until `vapa-audit` returns `READY_FOR_PR`.
 
-## Large Task Protocol
+## Decomposition Protocol
 
 Size selects the execution mode:
 
@@ -265,14 +296,41 @@ Size selects the execution mode:
 | L | Must be decomposed into `Size: S` sub-issues before implementation |
 | XL | Must return to the Proposal/Review layer for re-scoping; never execute directly |
 
-When executing via decomposition:
+### Decomposition rules
 
-1. Write `decomposition.md` in the parent workspace, containing: the list of sub-issues (or sub-task entries if creating real issues is not possible), the dependency order between them, what each delivers, and the integration criteria that define "the parent issue is done".
-2. Each sub-issue gets its own `vapa-exec` run with its own workspace (`.vapa/vapa-exec-<sub-id>/workspace/`), linking back to the parent in its `issue-brief.md`. Independent sub-issues may run in parallel; dependent ones must respect the recorded order.
-3. Cross-cutting contracts (shared interfaces, schemas, design tokens) are defined in the parent plan **before** sub-issue implementation starts, so parallel work does not diverge.
-4. After all sub-issues complete, run an integration pass in the parent workspace: verify the sub-implementations compose, run the full test suite, and record the result in the parent `TEST_REPORT.md` before handing to audit.
+1. **Single level only.** Decomposition depth is 1. If a sub-issue turns out to be too large during execution, stop and report `BLOCKED_FOR_HUMAN_DECISION`. Never decompose a sub-issue further on your own.
+2. **Human confirmation before issue creation.** Write `decomposition.md` in the parent workspace (template: `${CLAUDE_SKILL_DIR}/references/decomposition.md`) — the sub-issue list with dependency edges, what each delivers, and the integration criteria that define "the parent issue is done" — and present the split to the human for approval before creating tracker sub-issues. Record the approval and the creation in `VAPA_EXEC_LOG.md`.
+3. **Tracker linkage.** On GitHub, create sub-issues with the native sub-issue feature so the tracker records the parent-child relationship automatically. On other platforms, fall back to a task list in the parent issue body plus a first-line parent reference in each sub-issue body. Record the linkage method in `decomposition.md`. The workspace remains the source of truth for execution; tracker linkage is the visibility layer.
+4. **Approval coverage, with a guardrail.** The parent issue's approval covers the sub-issues listed in `decomposition.md`. Discovering a need for a sub-issue outside that list is a scope change and requires a human decision.
+5. **One branch per parent issue.** All sub-issue work lands on the parent's branch `vapa/<parent-id>-<slug>`. Sub-issues that run in parallel work in separate worktrees; the orchestrator merges a sub-issue's work back into the parent branch only after its audit returns `READY_TO_INTEGRATE`. Sub-agents never write to the parent branch directly.
+6. **Dual entry.** `vapa-exec` accepts either a parent issue URL — orchestration mode: reconcile state, schedule sub-issues by DAG waves, integrate, prepare for the parent audit — or a sub-issue URL — single mode: execute only that sub-issue, but first read the parent workspace's `decomposition.md` and the parent plan's cross-cutting contracts. If the parent workspace is missing locally in single mode, direct the user to run `vapa-exec` on the parent first.
+7. **Single writer for parent artifacts.** Only the orchestrator writes the parent `state.json` and the parent issue's roll-up comments. Sub-agents write only their own workspace and their own issue's comments.
 
-Revision budget: if `vapa-audit` returns `NEEDS_REVISION` twice for the same underlying finding, or `revision_count` in `state.json` reaches 3, stop and escalate to a human instead of iterating further. Repeated failed revisions are evidence of a broken assumption, not a coding problem.
+### DAG scheduling
+
+Record dependencies explicitly in `decomposition.md`, per sub-issue:
+
+```markdown
+### Sub-issue #43: <title>
+- delivers: <what it delivers>
+- depends_on: [#41]        # logical dependency: #41's output is #43's input
+- conflicts_with: [#44]    # optional physical conflict: touches the same files; serialize
+```
+
+- Validate the graph is acyclic when the human confirms `decomposition.md`.
+- Schedule in topological waves: sub-issues with no unmet dependencies form the current wave and may run in parallel, one worktree each. When the whole wave is merged back, the next wave unlocks. A sub-issue with multiple dependencies waits for all of them.
+- Wave N+1 worktrees are created from the parent branch only after wave N has been fully merged back, so dependencies are physically present in the code the next wave builds on.
+- Distinguish `depends_on` (logical; fixed order) from `conflicts_with` (file overlap; serialized, but any order). Most file overlaps should already be dissolved by defining cross-cutting contracts in the parent plan; `conflicts_with` is the fallback.
+- Blocked propagation follows the edges: when a sub-issue is blocked, its downstream sub-issues pause; its siblings continue. The parent roll-up comment states what is affected.
+- The DAG lives only in the workspace (`decomposition.md` and `state.json`). Tracker sub-issue features do not express dependencies. Keep the machinery simple: a `depends_on` list, topological waves, and the environment's concurrency limit — not a general-purpose scheduler.
+
+### Integration
+
+1. Each sub-issue gets its own `vapa-exec` run with its own workspace (`.vapa/vapa-exec-<sub-id>/workspace/`), linking back to the parent in its `issue-brief.md` and recording `"parent"` in its `state.json`.
+2. Cross-cutting contracts (shared interfaces, schemas, design tokens) are defined in the parent plan **before** sub-issue implementation starts, so parallel work does not diverge.
+3. After all sub-issues reach `READY_TO_INTEGRATE` and are merged back, run an integration pass in the parent workspace: verify the sub-implementations compose, run the full test suite, and record the result in the parent `TEST_REPORT.md` before handing to audit.
+
+Revision budget: if `vapa-audit` returns `NEEDS_REVISION` twice for the same underlying finding, or `revision_count` in `state.json` reaches 3, stop and escalate to a human instead of iterating further. In decomposed mode, each sub-workspace counts its own audit rounds and the parent workspace counts only integration-audit rounds. Repeated failed revisions are evidence of a broken assumption, not a coding problem.
 
 ## Frontend Execution Requirements
 
@@ -324,6 +382,29 @@ VAPA replaces reporting with transparency; the issue must reflect execution real
 - When blocked, the issue comment is the canonical record of the blocker — not just the workspace log.
 - After audit returns `READY_FOR_PR`, the issue moves toward `status: in-validation` as part of PR submission.
 
+For decomposed tasks, sync runs in both directions:
+
+- Every phase transition of a sub-issue produces a detailed comment on the sub-issue and a condensed roll-up comment on the parent issue, posted by the orchestrator: sub-issue id, transition outcome, and a link to the detailed comment. Reference, never copy — the sub-issue's comment is the canonical record.
+- Blocked sub-issues propagate: mark the sub-issue blocked in the parent `state.json`, pause scheduling of its downstream sub-issues (per the DAG), and state the needed human decision in the parent roll-up comment.
+- Defect fixes post a receipt: reply to the defect comment with the fixing commit and verification evidence, plus a roll-up comment on the parent issue (see Defect Handling).
+- When all sub-issues are integrated and the parent audit concludes, post a final summary comment on the parent issue: the sub-issue verdict list, integration test results, the parent audit verdict, and the workspace path.
+
+## Defect Handling
+
+Defects found after an execution has concluded take different channels depending on merge state:
+
+| Timing | Channel | Handling |
+|---|---|---|
+| Before the issue's PR merges (validation) | A defect comment on the issue | Re-run `vapa-exec` on the issue to start a defect-fix round: enumerate new defect comments since the last run, present the fix list for human confirmation, fix on the same branch, reply to each defect comment with the fixing commit and verification evidence, then run a delta re-audit (see Handoff to Audit) |
+| After the issue's PR merges | A standalone issue using the lightweight defect template | Standard `vapa-exec` pipeline with its own branch, workspace, audit, and PR. Reference the source issue and comment in the body; tracker linkage (e.g. a GitHub sub-issue relationship) is optional and serves visibility only |
+
+Boundaries:
+
+- Problems found by `vapa-exec`'s own testing are fixed in place (the Step 7 → Step 6 loop); they do not use either defect channel.
+- `NEEDS_REVISION` findings from an audit stay in the normal revision loop; they are not promoted to defect channels.
+- `defect_fix_rounds` in `state.json` counts defect-fix rounds. If new defects still appear after 3 rounds, escalate to a human — recurring defects indicate a systemic problem in the implementation or the acceptance criteria, not something more fixing can solve.
+- Defect issues use the lightweight template at `${CLAUDE_SKILL_DIR}/references/defect-report.md`: symptom, expected behavior, reproduction steps, and source (the validated issue plus comment link). Approval still requires a human; the acceptance criterion is "symptom eliminated without regression".
+
 ## Safety and Traceability
 
 - The `.vapa` workspace is commit-worthy by default, but never commit secrets, private user data, production exports, or unreleasable third-party material.
@@ -353,8 +434,16 @@ The handoff is ready only when these files exist:
 Expected audit verdicts:
 
 - `READY_FOR_PR`: move toward human validation and PR submission.
+- `READY_TO_INTEGRATE`: sub-level verdict for decomposed tasks; authorizes the orchestrator to merge the sub-issue's work back into the parent branch. Never treated as PR readiness.
 - `NEEDS_REVISION`: return to implementation or test; increment `revision_count` and respect the revision budget.
 - `BLOCKED_FOR_HUMAN_DECISION`: stop and ask the human to decide.
+
+Two-level audit for decomposed tasks:
+
+- Each sub-issue is audited in its own workspace and must reach `READY_TO_INTEGRATE` before the orchestrator merges its work back.
+- The parent audit covers the integrated whole. Its precondition is that every sub-issue has reached `READY_TO_INTEGRATE` and been merged back; otherwise the audit returns a not-ready list instead of a verdict (see `vapa-audit`).
+
+Post-audit changes: any code change after an audit verdict — including defect-fix rounds — invalidates that verdict. Run a delta re-audit covering the changed surface plus regression evidence, and issue a revised `VAPA_AUDIT.md`. Delta re-audits do not increment `revision_count`; defect-fix rounds are tracked separately by `defect_fix_rounds`.
 
 ## Common Mistakes / Red Flags
 
@@ -369,6 +458,15 @@ Expected audit verdicts:
 - Using `/tmp` as the only execution record, or losing resumability because `state.json` was never updated.
 - Losing track of acceptance criteria during implementation.
 - Executing an L/XL task in one session because decomposition felt like overhead.
+- Decomposing a sub-issue recursively instead of stopping and escalating.
+- Creating tracker sub-issues before the human has confirmed `decomposition.md`.
+- Adding sub-issues beyond `decomposition.md` under the cover of the parent's approval.
+- Executing a sub-issue standalone without reading the parent plan's cross-cutting contracts.
+- Sub-agents writing to the parent branch or the parent `state.json` directly.
+- Scheduling a sub-issue before its `depends_on` dependencies have been merged back into the parent branch.
+- Summarizing or submitting the parent PR before every sub-issue has reached `READY_TO_INTEGRATE` and been merged back.
+- Skipping the delta re-audit after defect fixes.
+- Letting the tracker linkage drift from `decomposition.md` without correcting it.
 - Iterating on `NEEDS_REVISION` indefinitely instead of escalating a broken assumption.
 - Leaving the issue silent for the whole execution — no status label, no progress comments.
 - Auditing your own work without writing a separate audit artifact.
