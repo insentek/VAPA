@@ -1,8 +1,6 @@
 ---
 name: vapa-proposal
 description: Create a new VAPA proposal with AI-assisted drafting, preview, and confirmation before submitting to GitHub Issues.
-disable-model-invocation: true
-allowed-tools: Bash(git remote get-url origin) Bash(gh issue list *) Read Write AskUserQuestion Bash(${CLAUDE_SKILL_DIR}/scripts/vapa-proposal.sh *)
 ---
 
 # /vapa-proposal
@@ -17,7 +15,7 @@ Create a new VAPA proposal on a GitHub repository. The skill helps you turn a on
 
 ## Proposal numbering
 
-Every approved proposal receives a `VEP-XXXX` prefix (4-digit, zero-padded). The shell backend computes the next number from existing issue titles at submission time.
+Every submitted draft receives a `VEP-XXXX` prefix (4-digit, zero-padded). The shell backend computes the next number from existing issue titles at submission time. This is a display convention, not an atomic unique identifier: concurrent submissions can collide, and the lookup covers at most 1,000 matching issues. Use GitHub's issue number / URL as the canonical identity. A failed number lookup stops submission.
 
 ## Usage
 
@@ -37,6 +35,12 @@ Org-level fields (`Align`, `Size`, `Shaper`, `Reviewed By`, `Validator`, `Sponso
 
 ## Execution
 
+### Resolve installed paths and invocation
+
+Resolve the absolute directory containing this installed `SKILL.md` as `SKILL_DIR`. Resolve the target repository root as `PROJECT_DIR` (use `git rev-parse --show-toplevel` when available, otherwise the working directory supplied by the user). These are task-local values, not predefined host environment variables. Before running a command, assign `SKILL_DIR` to the actual installed directory and quote all paths. Scripts resolve their own bundled resources from their file location.
+
+In Codex, invoke explicitly with `$vapa-proposal`; `agents/openai.yaml` preserves explicit invocation. In Claude Code, use `/vapa-proposal` or an explicit request. Use the host's available shell, file, and user-input tools; no named Claude tool or environment variable is required. Host permissions still apply. Do not initiate this workflow from unrelated work; require the user's request for it.
+
 ### Step 1: Detect repository
 
 Run:
@@ -51,8 +55,8 @@ Parse `owner/repo`. If detection fails, explain that the user should run `/vapa-
 
 Read the following files when they exist:
 
-- `${CLAUDE_PROJECT_DIR}/VISION.md`
-- `${CLAUDE_PROJECT_DIR}/README.md`
+- `${PROJECT_DIR}/VISION.md`
+- `${PROJECT_DIR}/README.md`
 
 Fetch recent issues for context and duplicate detection:
 
@@ -93,10 +97,10 @@ Select the bundled template that matches the type:
 
 | Type | Template |
 |---|---|
-| `Feature`, `Improvement`, `Technical Debt`, `Research` | `${CLAUDE_SKILL_DIR}/references/feature-proposal.md` |
-| `Problem` | `${CLAUDE_SKILL_DIR}/references/problem-statement.md` |
-| `Vision Amendment` | `${CLAUDE_SKILL_DIR}/references/vision-amendment.md` |
-| `Experiment` | `${CLAUDE_SKILL_DIR}/references/experiment.md` |
+| `Feature`, `Improvement`, `Technical Debt`, `Research` | `${SKILL_DIR}/references/feature-proposal.md` |
+| `Problem` | `${SKILL_DIR}/references/problem-statement.md` |
+| `Vision Amendment` | `${SKILL_DIR}/references/vision-amendment.md` |
+| `Experiment` | `${SKILL_DIR}/references/experiment.md` |
 
 `Research` reuses `feature-proposal.md`: the "问题陈述" section becomes the research question, "提案内容" becomes the expected output and methodology, and "验收标准" becomes the deliverable criteria.
 
@@ -126,7 +130,7 @@ Show the complete proposal in the terminal:
 <full body>
 ```
 
-Compute a best-effort preview number by running `${CLAUDE_SKILL_DIR}/scripts/vapa-proposal.sh --next-number --repo <owner/repo>`. Use the returned value in the preview title. The actual number is recomputed at submission time, so it may differ if another proposal is created in between.
+Compute a best-effort preview number by running `bash "${SKILL_DIR}/scripts/vapa-proposal.sh" --next-number --repo <owner/repo>`. Use the returned value in the preview title. The actual number is recomputed at submission time, so it may differ if another proposal is created in between.
 
 Then ask:
 
@@ -143,13 +147,13 @@ Write the final body to a unique temporary file and invoke the submission backen
 First create a per-proposal temp file (never reuse a fixed path — concurrent or back-to-back proposals would otherwise clobber each other or leak stale content into the new submission):
 
 ```bash
-BODY_FILE=$(mktemp /tmp/vep-body-XXXXXXXX.md)
+BODY_FILE=$(mktemp "${TMPDIR:-/tmp}/vep-body.XXXXXXXX")
 ```
 
 Write the final body to `$BODY_FILE`, then submit:
 
 ```bash
-${CLAUDE_SKILL_DIR}/scripts/vapa-proposal.sh \
+bash "${SKILL_DIR}/scripts/vapa-proposal.sh" \
   --repo <owner/repo> \
   --subject "<user subject>" \
   --body-file "$BODY_FILE" \
@@ -172,7 +176,7 @@ On success, report the created issue URL and VEP number.
 
 ## References
 
-The proposal templates are bundled at `${CLAUDE_SKILL_DIR}/references/`:
+The proposal templates are bundled at `${SKILL_DIR}/references/`:
 
 - `feature-proposal.md`
 - `problem-statement.md`

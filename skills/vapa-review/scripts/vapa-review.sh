@@ -53,9 +53,9 @@ require_repo() {
 # Accepts a plain issue number or a full GitHub issue URL; prints the number.
 parse_issue_ref() {
   local ref="$1"
-  if [[ "$ref" =~ /issues/([0-9]+) ]]; then
+  if [[ "$ref" =~ ^https://github\.com/[^/]+/[^/]+/issues/([1-9][0-9]*)([\?#].*)?$ ]]; then
     echo "${BASH_REMATCH[1]}"
-  elif [[ "$ref" =~ ^[0-9]+$ ]]; then
+  elif [[ "$ref" =~ ^[1-9][0-9]*$ ]]; then
     echo "$ref"
   else
     echo "❌ Cannot parse issue reference: $ref (expected a number or an issue URL)" >&2
@@ -76,6 +76,19 @@ fetch_context() {
 # ── Actions ─────────────────────────────────────────────────────
 
 do_context() {
+  # A full URL identifies both the repository and the issue. Never discard its
+  # repository and accidentally review an unrelated issue in the current repo.
+  if [[ "$ISSUE" =~ ^https://github\.com/([^/]+/[^/]+)/issues/([1-9][0-9]*)([\?#].*)?$ ]]; then
+    local url_repo="${BASH_REMATCH[1]}"
+    if [[ -n "$REPO" && "$(printf '%s' "$REPO" | tr '[:upper:]' '[:lower:]')" != "$(printf '%s' "$url_repo" | tr '[:upper:]' '[:lower:]')" ]]; then
+      echo "❌ Issue URL repository '$url_repo' conflicts with '$REPO'." >&2
+      return 1
+    fi
+    REPO="$url_repo"
+  elif [[ ! "$ISSUE" =~ ^[1-9][0-9]*$ ]]; then
+    echo "❌ Expected a positive issue number or a complete github.com issue URL." >&2
+    return 1
+  fi
   require_repo
   local issue
   issue=$(parse_issue_ref "$ISSUE")

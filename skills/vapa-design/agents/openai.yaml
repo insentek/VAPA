@@ -1,0 +1,6 @@
+interface:
+  display_name: "VAPA · Solution design"
+  short_description: "Discuss and confirm a proposal solution"
+  default_prompt: "Use $vapa-design to discuss this proposal and preview each design before posting."
+policy:
+  allow_implicit_invocation: false

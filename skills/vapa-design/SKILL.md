@@ -1,8 +1,6 @@
 ---
 name: vapa-design
 description: Use when handed a VAPA proposal issue URL and asked to design the solution. Gathers context once (issue, VISION.md, existing repo implementation), decomposes the design space into items (data model, API contracts, frontend flows, error handling, migration, permissions), designs each item interactively with the user, and posts every confirmed design as an issue comment.
-disable-model-invocation: true
-allowed-tools: Bash(git remote get-url origin) Bash(gh issue view *) Bash(gh issue comment *) Read Write Glob Grep AskUserQuestion
 ---
 
 # /vapa-design
@@ -68,6 +66,10 @@ without re-fetching every comment.
 
 ## Execution
 
+### Invocation
+
+In Codex, invoke explicitly with `$vapa-design`; `agents/openai.yaml` preserves explicit invocation. In Claude Code, use `/vapa-design` or an explicit request. Use the host's available shell, file, and user-input tools. Require the user's request for this workflow and confirmation of each design before posting it.
+
 ### Step 1: Detect repository and issue
 
 Run:
@@ -76,11 +78,7 @@ Run:
 git remote get-url origin
 ```
 
-Parse `owner/repo`. If detection fails, ask the user to run from a git repo with
-a GitHub origin remote, or set `VAPA_REPO=owner/repo`.
-
-Parse the issue reference from the user's argument — a plain number or a full
-issue URL both work.
+For a full GitHub issue URL, take both `owner/repo` and the positive issue number from the URL. Reject a conflicting explicit repository or `VAPA_REPO` rather than commenting on a different issue. For a plain positive number, use `VAPA_REPO` or the current GitHub origin. If no repository can be resolved, ask for the full issue URL.
 
 ### Step 2: Gather the full context — once
 
@@ -134,8 +132,8 @@ For each confirmed checklist item, in order:
 1. **Present**: the relevant current state from the survey, the candidate
    options with trade-offs, and a recommendation with reasoning. Keep it
    concrete — real table columns, real endpoint shapes, real flow steps.
-2. **Discuss**: answer questions, revise the proposal. Use AskUserQuestion when
-   the choice is genuinely the user's.
+2. **Discuss**: answer questions, revise the proposal. Use the host's user-input tool or ask in the conversation when
+   the choice requires the user's judgment.
 3. **Confirm**: only when the user explicitly approves, post the design as an
    issue comment in this format:
 

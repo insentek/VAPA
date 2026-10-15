@@ -46,12 +46,15 @@ get_next_vep_number() {
   local repo="$1"
   local max=0
   local titles
-  titles=$(gh issue list --repo "$repo" \
+  if ! titles=$(gh issue list --repo "$repo" \
     --state all \
     --search "VEP- in:title" \
     --limit 1000 \
     --json title \
-    --jq '.[].title' 2>/dev/null || true)
+    --jq '.[].title'); then
+    echo "❌ Could not read existing proposal numbers. No proposal was created." >&2
+    return 1
+  fi
 
   if [[ -n "$titles" ]]; then
     local num
@@ -114,7 +117,7 @@ create_proposal() {
   fi
 
   local next_vep clean_subject title body payload response issue_number issue_url
-  next_vep=$(get_next_vep_number "$repo")
+  next_vep=$(get_next_vep_number "$repo") || return 1
   clean_subject=$(python3 -c 'import sys, re; print(re.sub(r"^VEP-\d+\s+", "", sys.argv[1]))' "$subject")
   title="VEP-$next_vep $clean_subject"
   body=$(cat "$body_file")

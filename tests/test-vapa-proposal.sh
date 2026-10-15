@@ -39,6 +39,27 @@ assert_eq "some idea" "$clean1" "clean_subject strips existing VEP prefix"
 clean2=$(python3 -c 'import sys, re; print(re.sub(r"^VEP-\d+\s+", "", sys.argv[1]))' "some idea")
 assert_eq "some idea" "$clean2" "clean_subject leaves subject unchanged when no prefix"
 
+# A failed lookup must never be mistaken for an empty repository or reach POST.
+gh() { return 1; }
+if get_next_vep_number "owner/repo" >/dev/null 2>&1; then
+  echo "FAIL: failed number lookup must fail closed"
+  ((failures++)) || true
+fi
+
+test_body=$(mktemp)
+test_calls=$(mktemp)
+trap 'rm -f "$test_body" "$test_calls"' EXIT
+echo "Proposal body" > "$test_body"
+gh() {
+  if [[ "$1" == "api" ]]; then echo "unexpected POST" >> "$test_calls"; fi
+  return 1
+}
+if create_proposal "owner/repo" "A proposal" "$test_body" "Feature" >/dev/null 2>&1; then
+  echo "FAIL: proposal creation must stop when lookup fails"
+  ((failures++)) || true
+fi
+assert_eq "" "$(cat "$test_calls")" "failed lookup never reaches a write API"
+
 if [[ $failures -gt 0 ]]; then
   echo "$failures test(s) failed"
   exit 1

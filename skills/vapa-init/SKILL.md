@@ -1,8 +1,6 @@
 ---
 name: vapa-init
-description: Initialize VAPA issue types, issue fields, status labels, and issue templates on the current GitHub repository. Checks existing configuration and asks whether to update or reset before making changes.
-disable-model-invocation: true
-allowed-tools: Bash(git remote get-url origin) Bash(${CLAUDE_SKILL_DIR}/scripts/vapa-init.sh *) Read Write AskUserQuestion
+description: Inspect VAPA organization metadata and initialize repository status labels and issue templates, with an optional organization-wide contributor-field setup. Preview changes and confirm update or reset before applying them.
 ---
 
 # /vapa-init
@@ -37,10 +35,16 @@ No arguments needed. The skill detects the target repository from `git remote ge
 
 - Run inside a git repo with a GitHub `origin` remote.
 - `gh` CLI installed and authenticated with permission to modify the target repo.
-- The organization must already have the required VAPA issue types and issue fields (these are organization-level and cannot be created by this script).
+- The organization must already have the required issue types and the `Align` / `Size` fields. `--init-fields` can create or update the four contributor-role fields with organization-admin permission.
 - Python 3 and `requests` (used by the bundled label configurator).
 
 ## Execution
+
+### Resolve installed paths and invocation
+
+Resolve the absolute directory containing this installed `SKILL.md` as `SKILL_DIR`. Resolve the target repository root as `PROJECT_DIR` (use `git rev-parse --show-toplevel` when available, otherwise the working directory supplied by the user). These are task-local values, not predefined host environment variables. Before running a command, assign `SKILL_DIR` to the actual installed directory and quote all paths. Scripts resolve their own bundled resources from their file location.
+
+In Codex, invoke explicitly with `$vapa-init`; `agents/openai.yaml` preserves explicit invocation. In Claude Code, use `/vapa-init` or an explicit request. Use the host's available shell, file, and user-input tools; no named Claude tool or environment variable is required. Host permissions still apply. Do not initiate this workflow from unrelated work; require the user's request for it.
 
 ### Step 1: Detect repo and pre-flight check
 
@@ -54,25 +58,26 @@ No arguments needed. The skill detects the target repository from `git remote ge
 3. Run a pre-flight check:
 
    ```bash
-   ${CLAUDE_SKILL_DIR}/scripts/vapa-init.sh --check <owner/repo>
+   bash "${SKILL_DIR}/scripts/vapa-init.sh" --check <owner/repo>
    ```
 
 4. Show the result and ask the user what to do:
    - If nothing exists: "No VAPA configuration found on `owner/repo`. Initialize?"
-   - If partially or fully present: "Found X/Y VAPA labels, A/4 templates, B/7 issue types, and C/7 issue fields. Choose: ① Update (create missing, update existing) ② Reset (delete and recreate) ③ Cancel"
-   - If contributor issue fields are missing or not populated with org members: also offer to run `--init-fields` to create/update them from the organization member list.
+   - If partially or fully present: "Found X/Y VAPA labels, A/4 templates, B/7 issue types, and C/6 issue fields. Choose: ① Update (create missing, update existing) ② Reset (delete and recreate) ③ Cancel"
+   - If contributor issue fields are missing or not populated with org members: also offer to run `--init-fields` to create/update them from the organization member list. Explain that these are organization-wide changes. A conflicting field type stops execution and requires a separate migration plan.
+   - Explain that initialization writes labels remotely and commits the four templates directly to the repository's default branch through the GitHub Contents API. Include the target repository and files in the preview.
 
 5. Execute the chosen action:
-   - Update / Initialize: `${CLAUDE_SKILL_DIR}/scripts/vapa-init.sh <owner/repo>`
-   - Reset: `${CLAUDE_SKILL_DIR}/scripts/vapa-init.sh --reset <owner/repo>`
-   - Initialize org fields: `${CLAUDE_SKILL_DIR}/scripts/vapa-init.sh --init-fields <owner/repo>`
+   - Update / Initialize: `bash "${SKILL_DIR}/scripts/vapa-init.sh" <owner/repo>`
+   - Reset: `bash "${SKILL_DIR}/scripts/vapa-init.sh" --reset <owner/repo>`
+   - Initialize org fields: `bash "${SKILL_DIR}/scripts/vapa-init.sh" --init-fields <owner/repo>`
    - Cancel: stop and confirm cancellation.
 
 ### Step 2: VISION.md guidance
 
 After labels and templates are initialized successfully:
 
-1. Check whether `${CLAUDE_PROJECT_DIR}/VISION.md` exists.
+1. Check whether `${PROJECT_DIR}/VISION.md` exists.
 2. If it does **not** exist, ask the user: "是否现在创建 VISION.md？这是 VAPA 流程的北极星文档，所有提案都需要与之对齐。"
    - If the user agrees, proceed to step 3.
    - If the user declines, confirm that VISION.md can be created later.
@@ -99,9 +104,9 @@ Guide the user through the five sections defined in the VAPA specification. Ask 
 
 ### Step 4: Write VISION.md
 
-Use the collected answers to write a `VISION.md` file that follows the structure in `${CLAUDE_SKILL_DIR}/references/VISION.md.template`.
+Use the collected answers to write a `VISION.md` file that follows the structure in `${SKILL_DIR}/references/VISION.md.template`.
 
-Place the file at `${CLAUDE_PROJECT_DIR}/VISION.md`.
+Place the file at `${PROJECT_DIR}/VISION.md`.
 
 Include the current date in the footer:
 
@@ -131,13 +136,13 @@ After writing, show the user the file path and a brief summary of what was writt
 
 ## References
 
-- Issue templates are bundled in `${CLAUDE_SKILL_DIR}/references/`.
-- VISION.md template is at `${CLAUDE_SKILL_DIR}/references/VISION.md.template`.
+- Issue templates are bundled in `${SKILL_DIR}/references/`.
+- VISION.md template is at `${SKILL_DIR}/references/VISION.md.template`.
 
 ## Safety notes
 
 - Non-VAPA labels and templates are never modified or deleted, even in reset mode.
 - Reset mode only deletes labels whose names match the current or legacy VAPA taxonomy and the four bundled issue templates.
-- Issue types and issue fields are organization-level; `/vapa-init` checks for them but does not create or delete them.
+- Issue types and `Align` / `Size` are check-only. `--init-fields` creates or updates the four contributor-role fields organization-wide; it never deletes a field to change its type.
 - VISION.md is only created when it does not exist or only contains template placeholders.
 - Once VISION.md has meaningful content, it is treated as immutable by `/vapa-init`. Changes must go through the Vision Amendment process using the `vision-amendment.md` issue template.

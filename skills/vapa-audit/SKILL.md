@@ -20,7 +20,7 @@ Agent audit gives confidence. Human validation gives authority.
 - The user asks whether an Agent-executed change is ready for PR, validation, or merge.
 - The user asks for a review of a VAPA execution workspace.
 
-If there is no implementation yet, use `vapa-exec`. If there is no approved proposal, use `vapa-proposal` or a future `vapa-review` skill.
+If there is no implementation yet, use `vapa-exec`. If there is no approved proposal, use `vapa-proposal` to draft one or `vapa-review` for read-only proposal assessment.
 
 The audit never creates the workspace. If `.vapa/vapa-exec-<issue-id>/workspace/` does not exist, no execution has happened — stop and direct the user to `vapa-exec` instead of auditing an empty directory.
 
@@ -51,6 +51,8 @@ Conditional inputs, required when applicable:
 Also inspect the actual repository diff and relevant files. Do not rely only on the execution log.
 
 Check `state.json` before starting: the phase should be `tested`, and `revision_count` tells you how many audit round-trips have already happened. If `revision_count` is already 2 or more and the same underlying finding persists, prefer `BLOCKED_FOR_HUMAN_DECISION` over another `NEEDS_REVISION` — repeated failed revisions are evidence of a broken assumption, not a coding problem.
+
+Record the reviewed base/head commits (or the uncommitted diff), reviewer/session identity, and whether the reviewer also implemented the change. Prefer a separate agent/session. If a low-risk `Size: S` task is audited in the same session, disclose this as self-review; it is not independent verification.
 
 ## Verdicts
 

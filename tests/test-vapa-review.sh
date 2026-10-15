@@ -24,6 +24,12 @@ assert_eq() {
 
 assert_eq "15" "$(parse_issue_ref "15")" "plain number passes through"
 assert_eq "15" "$(parse_issue_ref "https://github.com/insentek/VAPA/issues/15")" "issue URL extracts number"
+for invalid in "0" "https://example.com/a/b/issues/15" "https://github.com/a/b/issues/15garbage"; do
+  if parse_issue_ref "$invalid" >/dev/null 2>&1; then
+    echo "FAIL: invalid issue reference accepted: $invalid"
+    ((failures++)) || true
+  fi
+done
 if parse_issue_ref "not-an-issue" >/dev/null 2>&1; then
   echo "FAIL: unparseable ref should fail"
   ((failures++)) || true
@@ -41,6 +47,18 @@ ctx_args=$(fetch_context "owner/repo" "15")
 assert_eq "issue view 15 --repo owner/repo --json number,title,state,url,author,labels,body,comments" \
   "$ctx_args" \
   "context fetches body AND comments AND labels in one call"
+
+url_args=$(REPO="" ISSUE="https://github.com/other/project/issues/42" do_context)
+assert_eq "issue view 42 --repo other/project --json number,title,state,url,author,labels,body,comments" \
+  "$url_args" "full URL keeps its repository even when cwd points elsewhere"
+
+if (REPO="owner/repo" ISSUE="https://github.com/other/project/issues/42" do_context) >/dev/null 2>&1; then
+  echo "FAIL: an explicit repository conflict must stop review"
+  ((failures++)) || true
+fi
+
+case_args=$(REPO="OTHER/PROJECT" ISSUE="https://github.com/other/project/issues/42" do_context)
+assert_eq "$url_args" "$case_args" "GitHub repository identity is case insensitive"
 
 # ── read-only guarantee: no write operations anywhere ───────────
 

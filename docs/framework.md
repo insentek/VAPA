@@ -642,7 +642,7 @@ approved
 - [ ] 验收标准已转化为具体的测试用例描述
 - [ ] 依赖的上下文（相关代码、API、数据结构）已在 Issue 中标注或链接
 - [ ] 边界约束已明确（不能修改什么，必须兼容什么）
-- [ ] `Size: M` 及以上的提案已拆解为 `Size: S` 的子 Issue
+- [ ] `Size: M` 已记录拆解决策与执行策略；`Size: L` / `XL` 已拆解为经批准拆分方案覆盖的 `Size: S` 子 Issue
 
 ### 信息准入
 - [ ] 提案人确认当前技术环境与提案撰写时一致
@@ -721,7 +721,7 @@ approved
 
 ### 5.5 独立审计与验收
 
-实现完成后，必须进入独立审计。审计可以由专门的 `vapa-audit` skill 执行，也可以由另一个 Agent Session 承担；对于 Size: S 的低风险提案，可以由同一 Session 切换到 Audit 角色执行，但必须明确记录审计结论。
+实现完成后，必须进入审计。优先使用独立 Agent / Session 执行 `vapa-audit`；对于 Size: S 的低风险提案，允许同一 Session 切换到 Audit 角色，但必须标明这是自审，不能称为独立验证。审计须记录审查的 base/head（或未提交 diff）、审计者 / Session，以及是否参与实现。
 
 审计结论只能是三种之一：
 
@@ -730,6 +730,8 @@ approved
 | `READY_FOR_PR` | 实现、测试和 PR 草稿足以进入人工验收 | 标记 `status: in-validation` |
 | `NEEDS_REVISION` | 存在可由 Agent 修复的问题 | 回到 Implementation / Test 阶段 |
 | `BLOCKED_FOR_HUMAN_DECISION` | 需要人类判断方向、范围或验收标准 | 暂停执行并在 Issue 中说明阻塞点 |
+
+拆分任务的子 Issue 另用 `READY_TO_INTEGRATE` 表示可以集成回父分支；这不等于可以提交最终 PR，父任务仍须完成集成验证和上述审计。详见 [父子任务执行模型](exec-parent-child-model.md)。
 
 Agent audit gives confidence. Human validation gives authority.
 
@@ -879,15 +881,17 @@ npx skills add insentek/VAPA
 |------|------|
 | `vapa-init` | 检测当前仓库的 VAPA 配置（Issue Type / Issue Fields / 状态标签 / 模板 / VISION.md）；不存在则初始化，存在则询问更新或重置 |
 | `vapa-proposal` | AI 辅助创建提案：推断类型、澄清缺失信息、生成完整正文、预览确认后提交；不带参数时列出待定提案 |
+| `vapa-design` | 在提案评审前逐项讨论方案，每项经用户确认后发布为 Issue 评论，并保存在同一任务工作区的 `design/` 中 |
 | `vapa-review` | 通读提案 Issue 完整正文与全部评论，对照评审五问与质量自检清单生成结构化评审并呈现给用户；只读技能——不发布评论、不变更标签，不做通过/拒绝决策 |
 | `vapa-exec` | 对已批准提案进行可追踪 Agent 执行，生成 `.vapa/vapa-exec-<issue-id>/workspace/` 执行账本 |
 | `vapa-audit` | 独立审计 Agent 实现、测试、范围、可追踪性与 PR 准备状态 |
 
 ### 前置条件
 
-- 已安装并登录 [GitHub CLI (`gh`)](https://cli.github.com/)，且对目标仓库有写权限。
+- 已安装并登录 [GitHub CLI (`gh`)](https://cli.github.com/)；`vapa-review` 只需读取权限，初始化、提案提交和设计评论需要相应写权限。
 - `vapa-init` 依赖 Python 3 与 `requests` 库。
-- 组织级 Issue Type 与 Issue Fields 需由组织管理员预先创建；`/vapa-init` 会检查它们是否存在。若贡献者字段（`Shaper`、`Reviewed By`、`Validator`、`Sponsor`）尚未绑定组织成员，可运行 `/vapa-init --init-fields` 进行初始化。
+- 组织级 Issue Type 与 `Align` / `Size` 字段需由组织管理员预先创建；`vapa-init` 会检查它们是否存在。`--init-fields` 可创建或更新四个贡献者字段（`Shaper`、`Reviewed By`、`Validator`、`Sponsor`），影响整个组织；类型冲突会停止，不会删除重建。
+- Codex 对话中使用 `$vapa-init` 等显式调用；Claude Code 使用 `/vapa-init` 等命令。安装与完整请求示例见 [README](../README.md)。
 
 ---
 

@@ -1,0 +1,6 @@
+interface:
+  display_name: "VAPA · Proposal"
+  short_description: "Draft a proposal and preview it before submission"
+  default_prompt: "Use $vapa-proposal to turn my idea into a proposal for review."
+policy:
+  allow_implicit_invocation: false

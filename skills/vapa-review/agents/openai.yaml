@@ -1,0 +1,6 @@
+interface:
+  display_name: "VAPA · Proposal review"
+  short_description: "Assess a proposal with evidence, without posting"
+  default_prompt: "Use $vapa-review to assess this GitHub proposal in read-only mode."
+policy:
+  allow_implicit_invocation: false

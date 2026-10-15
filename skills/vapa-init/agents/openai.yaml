@@ -1,0 +1,6 @@
+interface:
+  display_name: "VAPA · Repository setup"
+  short_description: "Inspect and configure a VAPA repository"
+  default_prompt: "Use $vapa-init to inspect this repository and preview setup changes."
+policy:
+  allow_implicit_invocation: false

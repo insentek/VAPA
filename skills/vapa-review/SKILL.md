@@ -1,8 +1,6 @@
 ---
 name: vapa-review
 description: Review a VAPA proposal issue in full (body + all comments) against the framework's five review questions and quality checklist, and present the structured review to the user. Read-only — never posts comments, never changes labels, never edits the issue.
-disable-model-invocation: true
-allowed-tools: Bash(git remote get-url origin) Bash(${CLAUDE_SKILL_DIR}/scripts/vapa-review.sh *) Read Write AskUserQuestion
 ---
 
 # /vapa-review
@@ -37,6 +35,12 @@ defer decisions always belong to the human review committee.
 
 ## Execution
 
+### Resolve installed paths and invocation
+
+Resolve the absolute directory containing this installed `SKILL.md` as `SKILL_DIR`. Resolve the target repository root as `PROJECT_DIR` (use `git rev-parse --show-toplevel` when available, otherwise the working directory supplied by the user). These are task-local values, not predefined host environment variables. Before running a command, assign `SKILL_DIR` to the actual installed directory and quote all paths. Scripts resolve their own bundled resources from their file location.
+
+In Codex, invoke explicitly with `$vapa-review`; `agents/openai.yaml` preserves explicit invocation. In Claude Code, use `/vapa-review` or an explicit request. Use the host's available shell, file, and user-input tools; no named Claude tool or environment variable is required. Host permissions still apply. Do not initiate this workflow from unrelated work; require the user's request for it.
+
 ### Step 1: Detect repository and issue
 
 Run:
@@ -45,7 +49,7 @@ Run:
 git remote get-url origin
 ```
 
-Parse `owner/repo`. If detection fails, ask the user to run from a git repo with
+For a full GitHub issue URL, take `owner/repo` from the URL. A conflicting explicit repository or `VAPA_REPO` must fail visibly. For a plain number, parse `owner/repo` from the current repository. If detection fails, ask the user to run from a git repo with
 a GitHub origin remote, or set `VAPA_REPO=owner/repo`.
 
 Parse the issue reference from the user's argument — a plain number or a full
@@ -54,7 +58,7 @@ issue URL both work (the backend normalizes either form).
 ### Step 2: Fetch the full context
 
 ```bash
-${CLAUDE_SKILL_DIR}/scripts/vapa-review.sh context --issue <ref> --repo <owner/repo>
+bash "${SKILL_DIR}/scripts/vapa-review.sh" context --issue <ref> --repo <owner/repo>
 ```
 
 This returns the issue's number, title, state, author, labels, **body, and all
@@ -65,7 +69,7 @@ questions in the comments are themselves a checklist finding.
 ### Step 3: Assess the proposal
 
 Evaluate the issue against the template at
-`${CLAUDE_SKILL_DIR}/references/review-comment.md`:
+`${SKILL_DIR}/references/review-comment.md`:
 
 1. **Quality checklist** (framework Layer 2.3) — all six items, each with a
    ✅ / ⚠️ / ❌ verdict **and a quote from the issue or comments as evidence**.
@@ -117,8 +121,8 @@ the skill's scope through a proposal update.
 
 ## References
 
-- Review output template: `${CLAUDE_SKILL_DIR}/references/review-comment.md`
-- Backend: `${CLAUDE_SKILL_DIR}/scripts/vapa-review.sh` (read-only; the only
+- Review output template: `${SKILL_DIR}/references/review-comment.md`
+- Backend: `bash "${SKILL_DIR}/scripts/vapa-review.sh"` (read-only; the only
   command is `context`)
 - Review criteria source: `docs/framework.md` Layer 2.3 (quality checklist) and
   Layer 3.3 (review five questions)

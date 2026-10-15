@@ -1,6 +1,6 @@
 ---
 name: vapa-exec
-description: Use when handed a VAPA issue link and asked to implement, plan, fix, or refine an approved proposal. Orchestrates artifact-driven execution using a project-local .vapa workspace, with multi-agent execution preferred, a decomposition protocol for large tasks, architecture rigor gates before coding, and visual verification requirements for frontend work.
+description: Implement or resume an approved or explicitly authorized VAPA issue, including execution planning and implementation revisions. Preserve a project-local .vapa execution record, with multi-agent execution preferred. Use vapa-proposal for proposal drafting and vapa-review for proposal assessment.
 ---
 
 # VAPA Issue Execution
@@ -19,7 +19,7 @@ This workspace is intended to be committed with the implementation when it conta
 
 ## When to Use
 
-- A user pastes a VAPA issue URL and asks to implement, plan, fix, or refine it.
+- A user pastes a VAPA issue URL and asks for implementation, execution planning, or revisions to its implementation.
 - The issue body or comments include proposal context, design notes, implementation constraints, screenshots, or acceptance criteria.
 - The user asks for Agent execution after a proposal has been approved or explicitly authorizes execution.
 
@@ -154,7 +154,7 @@ Required checks:
 - Boundaries are stated: what must not change, compatibility requirements, and out-of-scope work.
 - Required context is available: relevant code, APIs, data structures, designs, or linked documents.
 - For UI work: design references (screenshots, mockups, or an explicit "follow existing design system" instruction) exist, or the gap is recorded as a human decision point.
-- `Size: M` or larger proposals are split into `Size: S` sub-issues, or the reason for continuing is explicitly documented.
+- `Size: M` proposals have a documented decomposition decision and execution strategy. `Size: L` / `XL` must be split into `Size: S` sub-issues covered by the approved decomposition before implementation; recording an exception does not bypass this gate.
 - No new information invalidates the proposal's core assumptions.
 - Design comments: if the task has a non-trivial design surface but no `vapa-design` confirmed design comments exist on the issue, recommend running `vapa-design` first. This is advisory, not blocking.
 - The working tree is clean and based on the latest default branch, or the divergence is recorded.
@@ -299,7 +299,7 @@ Size selects the execution mode:
 ### Decomposition rules
 
 1. **Single level only.** Decomposition depth is 1. If a sub-issue turns out to be too large during execution, stop and report `BLOCKED_FOR_HUMAN_DECISION`. Never decompose a sub-issue further on your own.
-2. **Human confirmation before issue creation.** Write `decomposition.md` in the parent workspace (template: `${CLAUDE_SKILL_DIR}/references/decomposition.md`) — the sub-issue list with dependency edges, what each delivers, and the integration criteria that define "the parent issue is done" — and present the split to the human for approval before creating tracker sub-issues. Record the approval and the creation in `VAPA_EXEC_LOG.md`.
+2. **Human confirmation before issue creation.** Write `decomposition.md` in the parent workspace (template: `references/decomposition.md`, relative to this installed `SKILL.md`) — the sub-issue list with dependency edges, what each delivers, and the integration criteria that define "the parent issue is done" — and present the split to the human for approval before creating tracker sub-issues. Record the approval and the creation in `VAPA_EXEC_LOG.md`.
 3. **Tracker linkage.** On GitHub, create sub-issues with the native sub-issue feature so the tracker records the parent-child relationship automatically. On other platforms, fall back to a task list in the parent issue body plus a first-line parent reference in each sub-issue body. Record the linkage method in `decomposition.md`. The workspace remains the source of truth for execution; tracker linkage is the visibility layer.
 4. **Approval coverage, with a guardrail.** The parent issue's approval covers the sub-issues listed in `decomposition.md`. Discovering a need for a sub-issue outside that list is a scope change and requires a human decision.
 5. **One branch per parent issue.** All sub-issue work lands on the parent's branch `vapa/<parent-id>-<slug>`. Sub-issues that run in parallel work in separate worktrees; the orchestrator merges a sub-issue's work back into the parent branch only after its audit returns `READY_TO_INTEGRATE`. Sub-agents never write to the parent branch directly.
@@ -403,7 +403,7 @@ Boundaries:
 - Problems found by `vapa-exec`'s own testing are fixed in place (the Step 7 → Step 6 loop); they do not use either defect channel.
 - `NEEDS_REVISION` findings from an audit stay in the normal revision loop; they are not promoted to defect channels.
 - `defect_fix_rounds` in `state.json` counts defect-fix rounds. If new defects still appear after 3 rounds, escalate to a human — recurring defects indicate a systemic problem in the implementation or the acceptance criteria, not something more fixing can solve.
-- Defect issues use the lightweight template at `${CLAUDE_SKILL_DIR}/references/defect-report.md`: symptom, expected behavior, reproduction steps, and source (the validated issue plus comment link). Approval still requires a human; the acceptance criterion is "symptom eliminated without regression".
+- Defect issues use the lightweight template at `references/defect-report.md` relative to this installed `SKILL.md`: symptom, expected behavior, reproduction steps, and source (the validated issue plus comment link). Approval still requires a human; the acceptance criterion is "symptom eliminated without regression".
 
 ## Safety and Traceability
 

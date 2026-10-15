@@ -1,0 +1,24 @@
+name: Validate Skills and documentation
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check package, documentation, and scripts
+        run: |
+          python3 -m pip install -r tests/requirements.txt
+          python3 tests/check-skills.py
+          python3 tests/check-docs.py
+          bash -n skills/vapa-init/scripts/vapa-init.sh skills/vapa-proposal/scripts/vapa-proposal.sh skills/vapa-review/scripts/vapa-review.sh
+          bash tests/test-vapa-init.sh
+          bash tests/test-vapa-proposal.sh
+          bash tests/test-vapa-review.sh

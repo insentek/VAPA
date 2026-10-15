@@ -49,8 +49,8 @@ if [[ -z "$REPO" ]]; then
   if git rev-parse --git-dir > /dev/null 2>&1; then
     REMOTE_URL=$(git remote get-url origin 2>/dev/null || true)
     if [[ -n "$REMOTE_URL" ]]; then
-      if [[ "$REMOTE_URL" =~ github\.com[/:]([^/]+)/([^/.]+) ]]; then
-        REPO="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+      if [[ "$REMOTE_URL" =~ github\.com[/:]([^/]+)/([^/]+)(\.git)?$ ]]; then
+        REPO="${BASH_REMATCH[1]}/${BASH_REMATCH[2]%.git}"
       fi
     fi
   fi
@@ -76,7 +76,7 @@ TEMPLATES=(
 )
 
 # VAPA metadata dimensions. Issue types and issue fields are organization-level;
-# this script checks that they exist but does not create/delete them.
+# types and Align/Size are checked only; --init-fields manages contributor fields.
 VAPA_TYPES=(
   "Feature"
   "Problem"
@@ -150,25 +150,24 @@ PY
 }
 
 # Ensure an organization issue field exists as single_select with the given options.
-# If it exists with a different data_type, it is deleted and recreated.
+# A different data_type requires a separately planned migration; never delete it.
 ensure_issue_field() {
   local name="$1" description="$2" options_json="$3"
 
   local fields_json
-  fields_json=$(gh api "orgs/$OWNER/issue-fields" \
-    --header "X-GitHub-Api-Version: $API_VERSION" 2>/dev/null || true)
+  if ! fields_json=$(gh api "orgs/$OWNER/issue-fields" \
+    --header "X-GitHub-Api-Version: $API_VERSION"); then
+    echo "❌ Could not inspect organization fields; stopping before changes." >&2
+    return 1
+  fi
 
   local field_id field_type
-  field_id=$(echo "$fields_json" | python3 -c 'import json,sys; name=sys.argv[1]; data=json.load(sys.stdin); f=next((x for x in data if x["name"]==name), None); print(f["id"] if f else "")' "$name" 2>/dev/null || true)
-  field_type=$(echo "$fields_json" | python3 -c 'import json,sys; name=sys.argv[1]; data=json.load(sys.stdin); f=next((x for x in data if x["name"]==name), None); print(f["data_type"] if f else "")' "$name" 2>/dev/null || true)
+  field_id=$(echo "$fields_json" | python3 -c 'import json,sys; name=sys.argv[1]; data=json.load(sys.stdin); f=next((x for x in data if x["name"]==name), None); print(f["id"] if f else "")' "$name") || return 1
+  field_type=$(echo "$fields_json" | python3 -c 'import json,sys; name=sys.argv[1]; data=json.load(sys.stdin); f=next((x for x in data if x["name"]==name), None); print(f["data_type"] if f else "")' "$name") || return 1
 
   if [[ -n "$field_id" && "$field_type" != "single_select" ]]; then
-    echo "  existing '$name' is $field_type; deleting to recreate as single_select"
-    gh api "orgs/$OWNER/issue-fields/$field_id" \
-      --method DELETE \
-      --header "X-GitHub-Api-Version: $API_VERSION" \
-      >/dev/null 2>&1 || true
-    field_id=""
+    echo "❌ Existing organization field '$name' is '$field_type'. Plan its migration separately; no field was deleted." >&2
+    return 1
   fi
 
   local payload
@@ -192,6 +191,7 @@ PY
       --input - \
       >/dev/null 2>&1; then
       echo "  ❌ failed to update '$name'"
+      return 1
     fi
   else
     echo "  creating '$name'"
@@ -201,6 +201,7 @@ PY
       --input - \
       >/dev/null 2>&1; then
       echo "  ❌ failed to create '$name'"
+      return 1
     fi
   fi
 }
@@ -212,8 +213,8 @@ init_org_fields() {
   local members
   members=$(get_org_members)
   if [[ -z "$members" ]]; then
-    echo "⚠️  Could not fetch organization members. Skipping issue field initialization."
-    return 0
+    echo "❌ Could not fetch organization members. Stopping before issue field initialization."
+    return 1
   fi
 
   local members_file
@@ -323,25 +324,27 @@ if $RESET; then
 
   echo "🗑️  Removing current VAPA labels..."
   vapa_names=$(get_vapa_label_names)
-  for name in $vapa_names; do
+  while IFS= read -r name; do
+    [[ -n "$name" ]] || continue
     encoded=$(urlencode "$name")
     if gh api "repos/$REPO/labels/$encoded" --jq '.name' >/dev/null 2>&1; then
       echo "  deleting label: $name"
       gh api "repos/$REPO/labels/$encoded" --method DELETE >/dev/null
       sleep 0.3
     fi
-  done
+  done <<< "$vapa_names"
 
   echo "🗑️  Removing legacy VAPA labels..."
   legacy_names=$(get_legacy_label_names)
-  for name in $legacy_names; do
+  while IFS= read -r name; do
+    [[ -n "$name" ]] || continue
     encoded=$(urlencode "$name")
     if gh api "repos/$REPO/labels/$encoded" --jq '.name' >/dev/null 2>&1; then
       echo "  deleting legacy label: $name"
       gh api "repos/$REPO/labels/$encoded" --method DELETE >/dev/null
       sleep 0.3
     fi
-  done
+  done <<< "$legacy_names"
 
   echo "🗑️  Removing VAPA issue templates..."
   for tmpl in "${TEMPLATES[@]}"; do
