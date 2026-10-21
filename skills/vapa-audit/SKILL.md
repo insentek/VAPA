@@ -31,16 +31,18 @@ Audit from the execution workspace:
 ```text
 .vapa/vapa-exec-<issue-id>/workspace/
   state.json
-  issue-brief.md
-  source-map.md
-  readiness-report.md
-  codebase-survey.md
-  VAPA_EXEC_PLAN.md
+  events.jsonl
+  issue.json
+  comments/
+  issue-brief.md        # verbatim contract, sources, readiness verdict
+  VAPA_EXEC_PLAN.md     # decisions, codebase findings, execution strategy
   VAPA_EXEC_LOG.md
   TEST_REPORT.md
   evidence/
   PR_DRAFT.md
 ```
+
+Older workspaces may hold `source-map.md`, `readiness-report.md` or `codebase-survey.md` instead of the corresponding brief and plan sections. Accept either layout.
 
 Conditional inputs, required when applicable:
 
@@ -50,9 +52,9 @@ Conditional inputs, required when applicable:
 
 Also inspect the actual repository diff and relevant files. Do not rely only on the execution log. For `schema_version: 1` inputs, also check `events.jsonl` against the snapshot cursor; distinguish a recording fault from an implementation defect and reconcile it before issuing a verdict.
 
-Check `state.json` before starting: the phase should be `tested`, and `revision_count` tells you how many audit round-trips have already happened. If `revision_count` is already 2 or more and the same underlying finding persists, prefer `BLOCKED_FOR_HUMAN_DECISION` over another `NEEDS_REVISION` — repeated failed revisions are evidence of a broken assumption, not a coding problem.
+Check `state.json` before starting: the phase should be `tested`, and `revision_count` tells you how many audit round-trips have already happened. Compare your findings with earlier audit reports. If the same underlying finding has survived two revision attempts without a materially different approach or new evidence, prefer `BLOCKED_FOR_HUMAN_DECISION` over another `NEEDS_REVISION`: repeated failure on one finding is evidence of a broken assumption, not a coding problem. Distinct findings resolved across rounds are progress and do not justify escalation by themselves.
 
-Record the reviewed base/head commits (or the uncommitted diff), reviewer/session identity, and whether the reviewer also implemented the change. Prefer a separate agent/session. If a low-risk `Size: S` task is audited in the same session, disclose this as self-review; it is not independent verification.
+Record the reviewed base/head commits (or the uncommitted diff), reviewer/session identity, and whether the reviewer also implemented the change. Prefer a separate agent/session. If a low-risk change is audited in the same session, disclose this as self-review; it is not independent verification.
 
 ## Verdicts
 
@@ -69,17 +71,25 @@ Return exactly one verdict in `VAPA_AUDIT.md`:
 
 ### Step 0: Decomposition Pre-Check (parent issues of decomposed tasks)
 
-If the audit target is the parent issue of a decomposed task, read the parent `state.json` before anything else. If any sub-issue has not reached `READY_TO_INTEGRATE` or has not been merged back into the parent branch, do not start the audit: return a not-ready list with each sub-issue's current state. This is not a formal verdict — write no `VAPA_AUDIT.md`, do not touch `revision_count`, and do not consume revision budget. An unfinished decomposition is a scheduling fact, not an implementation defect.
+If the audit target is the parent issue of a decomposed task, read the parent `state.json` before anything else. If any sub-issue has not reached `READY_TO_INTEGRATE` or has not been merged back into the parent branch, do not start the audit: return a not-ready list with each sub-issue's current state. This is not a formal verdict — write no `VAPA_AUDIT.md`, and do not touch `revision_count`. An unfinished decomposition is a scheduling fact, not an implementation defect.
 
 ### Step 1: Validate Workspace Completeness
 
 Check that required workspace files exist and are internally consistent. Determine the task's domain (frontend, backend, mixed) and execution mode (inline or decomposed) from `state.json` and the plan, then verify the conditional artifacts that apply: `ui-spec.md` and `evidence/` for UI work, `decomposition.md` for decomposed work.
 
-Fail with `NEEDS_REVISION` if execution artifacts are missing but can be recreated. Use `BLOCKED_FOR_HUMAN_DECISION` only if the missing artifact prevents a judgment that an Agent cannot safely infer.
+Judge the record by whether it carries the contract, the decisions and the evidence:
+
+- The brief quotes the contract and records `Readiness: READY` (or a legacy `readiness-report.md` does).
+- The plan records codebase findings, contract-affecting design decisions with reasons, the execution strategy and why, the acceptance criteria mapping and the test strategy.
+- Test claims are backed by captures in `evidence/`.
+
+The shape of the process is not itself a finding. A plan written after exploration or a spike, inline execution of a large `Size`, helper agents without tracker issues, a short brief for a low-risk change, or a log that references commits instead of restating them are all acceptable when the contract, decisions and evidence are intact.
+
+Fail with `NEEDS_REVISION` if contract, decision or evidence artifacts are missing but can be recreated. Use `BLOCKED_FOR_HUMAN_DECISION` only if the missing artifact prevents a judgment that an Agent cannot safely infer.
 
 ### Step 2: Reconstruct the Proposal Contract
 
-From `issue-brief.md`, `source-map.md`, and the raw issue snapshot, extract:
+From the brief's Contract and Sources sections (or a legacy `source-map.md`) and the raw issue snapshot, extract:
 
 - Approved scope
 - Explicit non-goals
@@ -103,10 +113,11 @@ Check:
 - No secrets, private data, generated noise, or unsuitable artifacts are added.
 - `.vapa` workspace content is safe to commit or clearly marked for redaction.
 
-Also check architecture conformance against `codebase-survey.md` and the plan's Design section:
+Also check architecture conformance against the plan's Codebase findings (or a legacy `codebase-survey.md`) and its Design section:
 
-- New code follows the existing patterns the survey identified (layering, naming, error handling, test structure), or the deviation is justified in the plan or log.
-- Existing components, utilities, and design tokens were reused where the survey said equivalents exist; bespoke reinventions are findings.
+- New code follows the existing patterns the findings identified (layering, naming, error handling, test structure), or the deviation is justified in the plan or log.
+- Existing components, utilities, and design tokens were reused where equivalents exist; bespoke reinventions are findings.
+- Delivery code that embodies a contract-affecting decision (interface, schema, data migration, dependency) with no recorded rationale in the plan is a finding.
 - Interfaces, schemas, or events changed in the diff match the contracts defined in the plan's Design section. Undeclared contract changes are at least `P1`.
 - New dependencies introduced by the diff were approved in the plan or by a recorded human decision. Unapproved dependencies are at least `P1`.
 
@@ -148,8 +159,9 @@ If rendering was impossible in the execution environment, the gap must be explic
 
 ### Step 5b: Review Decomposition Integration (decomposed tasks)
 
-When the work was executed as sub-issues per `decomposition.md`:
+When the work was executed as tracker sub-issues per `decomposition.md`:
 
+- The decomposition benefit check explains what humans gain from each tracker child (separate validation, visibility/ownership or an isolated risk boundary). A split justified only by `Size` or agent parallelism is a `P3` finding for future work, not a reason to block an otherwise sound delivery.
 - Each sub-issue has its own complete workspace and its own audit with a `READY_TO_INTEGRATE` verdict.
 - The tracker-level parent-child linkage exists and matches `decomposition.md` in sub-issue count and numbering (on GitHub, the native sub-issue relationship; elsewhere, the documented fallback). Drift between the tracker and `decomposition.md` is a finding.
 - The cross-cutting contracts defined in the parent plan were respected by all sub-implementations.
@@ -177,7 +189,7 @@ The PR draft should make human validation faster, not merely summarize that work
 
 Write the audit report into the workspace.
 
-After writing the report, update `state.json`: set `phase` to `audited`, and if the verdict is `NEEDS_REVISION`, increment `revision_count` so the revision budget stays enforceable across sessions.
+After writing the report, update `state.json`: set `phase` to `audited`, and if the verdict is `NEEDS_REVISION`, increment `revision_count` so the round history stays visible across sessions.
 
 For version 1 snapshots, preserve the fixed format: record `audit`, `evidence.audit` and the actual `evidence.tested_commit`; append an `audit.recorded` event and advance `last_event_seq` consistently. Obtain the workspace writer handoff from the coordinator before writing, or return the result for the coordinator to record. Never write the same snapshot/stream concurrently or add ad hoc audit fields. Legacy inputs remain readable; do not fabricate old events.
 
@@ -248,7 +260,9 @@ Any code change after an audit verdict — including defect-fix rounds run by `v
 - Auditing a decomposed parent and returning `NEEDS_REVISION` when sub-issues are not all `READY_TO_INTEGRATE` — return the not-ready list instead, without writing `VAPA_AUDIT.md`.
 - Verifying workspace artifacts but not the tracker-level parent-child linkage against `decomposition.md`.
 - Reusing a stale verdict after post-audit code changes instead of running a delta re-audit.
-- Returning `NEEDS_REVISION` a third time for the same finding instead of escalating to a human.
+- Returning `NEEDS_REVISION` again for a finding that survived two revision attempts without a new approach, instead of escalating to a human.
+- Escalating merely because the round count is high while distinct findings are being resolved.
+- Reporting the shape of the process (plan after a spike, no separate survey file, inline execution of a large `Size`, helper agents without tracker issues) as a defect when the contract, decisions and evidence are intact.
 - Allowing scope expansion because the implementation looks useful.
 - Marking `READY_FOR_PR` while PR body lacks traceability.
 - Ignoring unsafe content in `.vapa` workspace artifacts.

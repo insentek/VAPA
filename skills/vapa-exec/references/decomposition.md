@@ -1,9 +1,12 @@
 # Decomposition — #<parent-id>: <parent title>
 
 > Template for `.vapa/vapa-exec-<parent-id>/workspace/decomposition.md`.
-> This document must be presented to the human for approval BEFORE any tracker
-> sub-issue is created. It is the execution source of truth for the split; the
-> tracker linkage is only the visibility layer.
+> Use it only for tracker decomposition: children that humans should see, track
+> or validate separately. Internal breakdown and helper agents need no
+> decomposition file and no approval; record them in the plan instead.
+> Present this document to the human for approval BEFORE creating any tracker
+> sub-issue. It is the execution record for the split; tracker linkage is only
+> the visibility layer.
 
 ## Tracker linkage
 
@@ -12,31 +15,32 @@
 
 ## Cross-cutting contracts
 
-[Interfaces, schemas, events, and design tokens that every sub-issue must
-respect. Point to the parent plan's Design section; do not redefine here.]
+[Interfaces, schemas, events and design tokens that every child must respect.
+Point to the parent plan's Design section; do not redefine them here.]
 
 ## Decomposition benefit check
 
-- Cohesive delivery/acceptance boundary: <capability, including its necessary layers>
-- Alternatives considered: <keep inline, combine related work, or split>
-- Coordination cost: <planning, worktrees, test/build, audit and integration>
-- Expected benefit: <independent validation, actual parallelism or risk isolation>
-- Merge-back review: <which candidates share changes/acceptance and why they stay separate>
-- Calibration: <existing comparable work or first approved units; revise estimates when observed>
+- Why tracker issues instead of inline work or helper agents: <what humans gain:
+  separate validation, visibility/ownership, or an isolated risk boundary>
+- Cohesive delivery/acceptance boundaries: <capabilities, including their necessary layers>
+- Coordination cost: <planning, worktrees, test/build, child audits and integration>
+- Merge-back review: <which candidates share changes or acceptance and why they stay separate>
+- Calibration: <comparable existing work or first completed children; revise estimates when observed>
 
-A child Issue is not an agent assignment. Keep implementation steps and ordinary
-DTO/component/helper work inside a delivery unit. Do not split merely to increase
-parallelism or meet an arbitrary count; preserve S size and real risk boundaries.
+All children ship in the parent's single PR, so splitting does not shrink the
+human review unit. If the only benefit is agent parallelism or context
+isolation, use helper agents instead. Do not split to meet a count or a size;
+preserve real risk boundaries.
 
 ## Sub-issues
 
 ### Sub-issue #<id>: <title>
 
-- delivers: <independently verifiable capability>
+- delivers: <independently acceptable capability>
 - owner: <responsible role and affected area>
 - split_benefit: <concrete value of a separate tracker issue>
-- internal_steps: <work that stays inside this issue, including agent assignments>
-- depends_on: []             <!-- logical dependencies; fixed order -->
+- internal_steps: <work that stays inside this issue, including helper-agent assignments>
+- depends_on: []             <!-- real prerequisites only; fixed order -->
 - conflicts_with: []         <!-- optional: file overlap; serialize, any order -->
 - resources: []              <!-- optional named exclusive resources, not fake dependencies -->
 - acceptance: <what "done" means for this sub-issue>
@@ -46,9 +50,10 @@ parallelism or meet an arbitrary count; preserve S size and real risk boundaries
 ## Dispatch and integration
 
 - Recompute the ready set after each integration or worker/resource release.
-- Start only after all direct prerequisites are audited and integrated, capacity
-  is free, and neither active nor selected tasks conflict. Do not wait for a whole
-  topological level. Refresh the worktree from the verified current parent base.
+- Start a child once all direct prerequisites are audited and integrated,
+  capacity is free and nothing conflicting is active or selected. Do not wait for
+  a whole topological level. Refresh the worktree from the verified current
+  parent base.
 - Name any integration milestone that genuinely needs multiple children; do not
   make every milestone a global scheduling barrier.
 - Link versioned child state/events and parent-owned integration receipts using
@@ -56,8 +61,8 @@ parallelism or meet an arbitrary count; preserve S size and real risk boundaries
 
 ## Integration criteria
 
-[What defines "the parent issue is done": how the sub-implementations must
-compose, and what the integrated test suite must demonstrate.]
+[What defines "the parent issue is done": how the children must compose, and
+what the integrated test suite must demonstrate.]
 
 ## Parent PR closing references
 

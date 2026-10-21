@@ -615,19 +615,21 @@ VAPA 使用 GitHub Projects 作为 Roadmap 的承载工具，推荐配置三个�
 
 Agent 加速执行，也会加速错误假设的扩散。因此 VAPA 的执行层不是一个“把 Issue 丢给 AI”的步骤，而是一套**可审计、可追踪、可返工**的执行编排协议。
 
-VAPA 推荐使用多 Agent 执行：不同 Agent 分别承担上下文整理、计划、实现、测试、审计和 PR 整理。对于小型提案，也可以由单一 Session inline 执行，但仍必须按相同的阶段产出执行记录。
+执行协议只约束三类事情：**权责**（批准、范围、验收标准、已确认设计和新依赖由人决定）、**事实**（分支、worktree、tracker 语义和单写者记录）、**证据**（每个“已完成”都有可观察的证据）。怎样探索、何时做原型、是否使用辅助 Agent、如何拆解和排序工作，由 Agent 判断并记录理由。
+
+多 Agent 的价值在于并行处理独立部分与独立验证，而不是按阶段把工作交接给不同角色。审计优先由独立 Agent / Session 承担。
 
 ```
 approved
   → readiness-check
   → context-ready
   → plan-ready
-  → implemented
-  → tested
-  → audit-ready
+  → implementing → implemented
+  → testing → tested
+  → audited
 ```
 
-`audit-ready` 表示 `vapa-exec` 已完成实现与测试，并生成了 PR 草稿。此后进入 `vapa-audit` 进行独立审计，审计结论为 `READY_FOR_PR`、`NEEDS_REVISION` 或 `BLOCKED_FOR_HUMAN_DECISION`。
+`tested` 表示 `vapa-exec` 已完成实现与测试，并生成了 PR 草稿。此后进入 `vapa-audit` 进行独立审计，完成后阶段为 `audited`；审计结论单独记录在 `state.json` 的 `audit` 字段，为 `READY_FOR_PR`、`NEEDS_REVISION` 或 `BLOCKED_FOR_HUMAN_DECISION`（拆分任务的子 Issue 另有 `READY_TO_INTEGRATE`）。
 
 ### 5.1 Agent 执行准入检查
 
@@ -642,7 +644,7 @@ approved
 - [ ] 验收标准已转化为具体的测试用例描述
 - [ ] 依赖的上下文（相关代码、API、数据结构）已在 Issue 中标注或链接
 - [ ] 边界约束已明确（不能修改什么，必须兼容什么）
-- [ ] `Size: M` 已记录拆解决策与执行策略；`Size: L` / `XL` 已拆解为经批准拆分方案覆盖的 `Size: S` 子 Issue
+- [ ] 范围是一个可整体验收的交付；捆绑多个可独立交付价值的提案（常见于 `Size: XL`）已退回提案层重新划定
 
 ### 信息准入
 - [ ] 提案人确认当前技术环境与提案撰写时一致
@@ -661,67 +663,63 @@ approved
 
 ```text
 .vapa/vapa-exec-<issue-id>/workspace/
+  state.json / events.jsonl
   issue.json
   comments/
   images/
-  issue-brief.md
-  source-map.md
-  readiness-report.md
-  VAPA_EXEC_PLAN.md
-  VAPA_EXEC_LOG.md
-  TEST_REPORT.md
+  issue-brief.md        # 逐字引用的契约、来源与准入结论
+  VAPA_EXEC_PLAN.md     # 代码库发现、关键决策、执行策略与验证方式
+  VAPA_EXEC_LOG.md      # Git 无法记录的判断、偏离与阻塞
+  TEST_REPORT.md / evidence/
   PR_DRAFT.md
 ```
+
+记录深度随风险和不确定性调整，而不是套模板；Git 历史和事件流已记录的内容不再重复叙述。
 
 `VAPA_AUDIT.md` 由 `vapa-audit` skill 在 `vapa-exec` 完成后独立生成，不放在执行工作区初始清单中。
 
 该目录默认可以提交到 GitHub，用于追踪 Agent 如何理解、计划、实现和验收一个提案。团队可以在其中复盘 Agent 的决策质量，改进后续提案模板、执行协议和技能设计。
 
-执行工作区不应包含密钥、私有用户数据、生产数据导出或无法公开的第三方资料。如 Issue 或评论中包含敏感信息，Agent 必须在 `source-map.md` 中记录引用来源，并在提交前进行脱敏或改用摘要。
+执行工作区不应包含密钥、私有用户数据、生产数据导出或无法公开的第三方资料。如 Issue 或评论中包含敏感信息，Agent 必须在 `issue-brief.md` 的来源部分记录引用来源，并在提交前进行脱敏或改用摘要。
 
-### 5.3 多 Agent 执行角色
+### 5.3 执行策略
 
-| 角色 | 职责 | 主要产物 |
-|------|------|---------|
-| Orchestrator | 检查准入、创建工作区、分派阶段、决定返工或升级给人类 | `readiness-report.md` |
-| Context Agent | 抓取 Issue、评论、图片、相关文档和仓库上下文 | `issue-brief.md`、`source-map.md` |
-| Planner Agent | 将验收标准转化为可执行计划和测试策略 | `VAPA_EXEC_PLAN.md` |
-| Implementation Agent | 按计划实现，记录关键判断和偏离点 | 代码变更、`VAPA_EXEC_LOG.md` |
-| Test Agent | 根据验收标准设计并运行验证 | `TEST_REPORT.md` |
-| PR Agent | 整理 PR 标题、正文、验收映射和贡献记录 | `PR_DRAFT.md` |
+执行策略由工作本身决定，并在计划中记录理由。`Size` 是人的估算，用于校准，不决定执行方式：
 
-独立审计由 `vapa-audit` skill 承担，不属于 `vapa-exec` 的执行角色。
-
-不同 Size 使用不同执行策略：
-
-| Size | 执行模式 |
+| 策略 | 适用情况 |
 |------|---------|
-| S | 可使用单 Session inline 执行，但必须保留计划、日志、测试和审计产物 |
-| M | 推荐至少分离 Planner / Implementation / Audit 角色 |
-| L | 必须拆解为 Size: S 的子 Issue 后执行 |
-| XL | 必须回到 Proposal / Review 层重新拆分，不允许直接委托 Agent |
+| Inline | 一个 Agent 能掌握上下文，工作基本顺序进行；任何 Size 的默认选择 |
+| 辅助 Agent | 独立部分可并行、多个方案值得并排探索，或旁支调查会挤占主上下文；由协调者合入，不建 tracker Issue，也无需人工批准 |
+| Tracker 拆分 | 存在需要人单独查看、跟踪或验收的交付，或某个风险边界需要单独审计；需 `decomposition.md` 并经人批准 |
+
+所有子 Issue 都随父任务的同一个 PR 交付，拆分并不缩小人工审查的范围。只为 Agent 并行或上下文隔离而拆分时，应使用辅助 Agent。Tracker 拆分保持一层；子任务内部可以自由细分，工作量超出预估但契约不变时继续执行，只有验收边界或范围改变才需要人决定。
+
+独立审计由 `vapa-audit` skill 承担。不按阶段把工作交接给上下文、计划、实现、测试等角色；委派时传递逐字契约与原始资料路径，而不只是摘要。
 
 ### 5.4 执行计划与记录
 
-`VAPA_EXEC_PLAN.md` 必须包含：
+探索、运行和一次性原型可以发生在任何阶段，包括计划之前。交付代码进入任务分支前，`VAPA_EXEC_PLAN.md` 必须记录：
 
 - 目标与非目标
-- 验收标准到实现步骤的映射
-- 预期文件影响范围
+- 代码库发现：影响范围、可沿用的现有模式与可复用能力
+- 难以回退或评审必须检查的设计决策：接口、数据、边界错误处理、关键取舍及理由、新依赖
+- 执行策略及理由
+- 验收标准到实现与验证方式的映射
 - 测试策略和命令
 - 已知风险与回滚方式
 - 需要人类判断的节点
 
-`VAPA_EXEC_LOG.md` 必须记录：
+`VAPA_EXEC_LOG.md` 记录 Git 无法表达的内容：
 
-- 实际修改了哪些文件
-- 与计划不一致的地方及原因
-- Agent 自行做出的关键判断
+- Agent 自行做出的关键判断及理由
+- 与计划不一致的地方、原型得出的结论
 - 阻塞、返工和人工确认记录
+
+修改了哪些文件、按什么顺序提交，由 Git 历史提供。返工按进展判断：同一问题在两次返工后仍未以新方法或新证据解决，或问题源自契约本身时，升级给人；不同问题逐轮解决属于正常推进。
 
 ### 5.5 独立审计与验收
 
-实现完成后，必须进入审计。优先使用独立 Agent / Session 执行 `vapa-audit`；对于 Size: S 的低风险提案，允许同一 Session 切换到 Audit 角色，但必须标明这是自审，不能称为独立验证。审计须记录审查的 base/head（或未提交 diff）、审计者 / Session，以及是否参与实现。
+实现完成后，必须进入审计。优先使用独立 Agent / Session 执行 `vapa-audit`；对于低风险改动，允许同一 Session 切换到 Audit 角色，但必须标明这是自审，不能称为独立验证。审计须记录审查的 base/head（或未提交 diff）、审计者 / Session，以及是否参与实现。
 
 审计结论只能是三种之一：
 
@@ -962,7 +960,7 @@ VAPA 的设计者认为，诚实地暴露系统的脆弱点，比假装它没有
 
 **风险描述**：Agent 实现质量不稳定，验收者频繁面对需要大量人工修正的结果，导致流程堵塞。
 
-**对抗措施**：严格的 Agent 执行准入检查；`Size: S` 作为 Agent 执行的标准单元，大提案必须拆解。
+**对抗措施**：严格的 Agent 执行准入检查；捆绑多个独立价值的提案退回提案层重新划定；独立审计与证据化测试先于人工验收；PR 按验收边界组织，便于分段审查。
 
 ### Risk 4：系统性冷漠
 

@@ -41,7 +41,7 @@ flowchart LR
 - **[`vapa-proposal`](skills/vapa-proposal/SKILL.md) · 把一句想法写成可讨论的提案。** 结合仓库上下文补齐问题、范围与验收标准，预览确认后创建草稿 Issue。不带主题时列出待定提案。
 - **[`vapa-design`](skills/vapa-design/SKILL.md) · 把方案逐项谈清楚。** 结合现有实现，讨论数据、接口、交互和迁移等设计；每项经你确认后才发布为 Issue 评论，并在任务工作区保留设计记录。
 - **[`vapa-review`](skills/vapa-review/SKILL.md) · 在写代码前找出缺口。** 阅读 Issue 正文和评论，给出有原文依据的结构化评审。结果只显示在对话里，不发评论、不改标签，也不代替团队批准提案。
-- **[`vapa-exec`](skills/vapa-exec/SKILL.md) · 按已确认范围执行。** 检查执行条件，建立项目内工作区，保存计划、实现日志、测试报告与 PR 草稿。大任务先拆分。
+- **[`vapa-exec`](skills/vapa-exec/SKILL.md) · 按已确认范围执行。** 检查执行条件，建立项目内工作区，保存契约、关键决策、测试证据与 PR 草稿。执行方式由 Agent 按工作本身选择；范围与验收仍由人决定。
 - **[`vapa-audit`](skills/vapa-audit/SKILL.md) · 把交付对回承诺。** 检查实际 diff、测试和执行记录，返回可评审、需返工或需人决策的结论。优先使用独立 Agent / 会话；同一会话的自审须明确披露。
 
 你可以先用 `vapa-review` 评审一个现有提案，再决定是否引入完整流程。
@@ -122,21 +122,18 @@ $vapa-audit 审计 .vapa/vapa-exec-<issue-number>/workspace/
   issue.json             # 原始提案快照
   comments/              # 讨论记录
   images/                # 引用图片（适用时）
-  issue-brief.md         # 已确认的问题、范围与验收条件
-  source-map.md          # 依据与来源
-  readiness-report.md    # 是否具备执行条件
-  codebase-survey.md     # 现有实现与可复用能力
+  issue-brief.md         # 逐字引用的验收条件与边界、来源、准入结论
   evidence/              # 验证证据，UI 任务须有视觉证据
-  VAPA_EXEC_PLAN.md      # 实施与验证计划
-  VAPA_EXEC_LOG.md       # 实际变更、偏离与关键判断
+  VAPA_EXEC_PLAN.md      # 代码库发现、关键决策、执行策略与验证计划
+  VAPA_EXEC_LOG.md       # Git 无法记录的判断、偏离与阻塞
   TEST_REPORT.md         # 验证结果与未覆盖项
   PR_DRAFT.md            # 供人工审阅的 PR 草稿
   VAPA_AUDIT.md          # 审计结论与证据
 ```
 
-状态与事件格式见 [执行状态契约](skills/vapa-exec/references/execution-state.md)。附带只读检查工具，可检查记录一致性并计算依赖就绪任务；它不负责启动 Agent 或写 GitHub。拆分前评估独立交付收益与管理成本，调度按直接依赖就绪进行，无需等待整波完成。
+状态与事件格式见 [执行状态契约](skills/vapa-exec/references/execution-state.md)。附带只读检查工具，可检查记录一致性并计算依赖就绪任务；它不负责启动 Agent 或写 GitHub。只有需要人单独查看或验收的交付才拆成子 Issue；Agent 内部的并行与细分无需建 Issue。调度按直接依赖就绪进行，无需等待整波完成。
 
-UI 任务还需要 `ui-spec.md`；拆分任务还需要父任务的 `decomposition.md`。设计阶段只创建 `design/`，执行阶段再补齐状态和其余记录。拆分执行与父子任务交接见 [执行模型](docs/exec-parent-child-model.md)。
+UI 任务还需要 `ui-spec.md`；拆成子 Issue 的任务还需要父任务的 `decomposition.md`。设计阶段只创建 `design/`，执行阶段再补齐状态和其余记录。拆分执行与父子任务交接见 [执行模型](docs/exec-parent-child-model.md)。
 
 这些记录在脱敏后可以随实现提交。审计返回 `READY_FOR_PR` 表示具备进入人工评审的条件；子任务的 `READY_TO_INTEGRATE` 只表示可以回到父分支集成。最终验收与合并仍由人决定。
 

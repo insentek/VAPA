@@ -28,7 +28,7 @@ init → proposal → design → review → HUMAN APPROVAL → exec → audit �
 - **[`vapa-proposal`](skills/vapa-proposal/SKILL.md):** develop an idea into a proposal with scope and acceptance criteria. Preview and confirm before creating a draft Issue. With no subject, list pending proposals.
 - **[`vapa-design`](skills/vapa-design/SKILL.md):** discuss data, API, interaction, migration, and other relevant design decisions. Post each confirmed item as an Issue comment and retain its local archive.
 - **[`vapa-review`](skills/vapa-review/SKILL.md):** read the Issue and comments, then present an evidence-backed assessment in the conversation. Read-only: no comments, label changes, or approval decisions.
-- **[`vapa-exec`](skills/vapa-exec/SKILL.md):** check readiness, implement approved work, and save the plan, execution log, test report, and PR draft. Decompose large tasks first.
+- **[`vapa-exec`](skills/vapa-exec/SKILL.md):** check readiness, implement approved work, and save the contract, key decisions, test evidence, and PR draft. The agent chooses how to execute; people keep scope and acceptance.
 - **[`vapa-audit`](skills/vapa-audit/SKILL.md):** inspect the actual diff, tests, and traceability. Prefer a separate agent/session; disclose same-session self-review.
 
 Start with a read-only proposal review if you want to try one part before adopting the full workflow.
@@ -88,11 +88,11 @@ Initialization updates remote labels and commits four templates directly to the 
 
 ## Evidence stays with the work
 
-Design and execution share `.vapa/vapa-exec-<issue-number>/workspace/`. Design adds only `design/`; execution adds versioned `state.json`, append-only `events.jsonl`, source snapshots, the agreed brief, source map, readiness report, codebase survey, plan, execution log, test evidence, and PR draft. Audit adds its report. UI work also requires `ui-spec.md`; decomposed parent tasks require `decomposition.md`. Records can accompany the implementation after redaction. See the [parent/child execution model](docs/exec-parent-child-model.md) (Chinese).
+Design and execution share `.vapa/vapa-exec-<issue-number>/workspace/`. Design adds only `design/`; execution adds versioned `state.json`, append-only `events.jsonl`, source snapshots, a brief quoting the contract with its sources and readiness verdict, a plan with codebase findings and key decisions, an execution log of judgments and deviations, test evidence, and a PR draft. Audit adds its report. UI work also requires `ui-spec.md`; decomposed parent tasks require `decomposition.md`. Records can accompany the implementation after redaction. See the [parent/child execution model](docs/exec-parent-child-model.md) (Chinese).
 
 `READY_FOR_PR` means ready for human review. A sub-issue's `READY_TO_INTEGRATE` only allows integration into its parent branch. People accept delivery and approve the final merge.
 
-The [execution state contract](skills/vapa-exec/references/execution-state.md) defines fixed snapshots and append-only events. Its read-only helper validates records and selects dependency-ready candidates; it neither starts agents nor writes GitHub. Decomposition weighs independent delivery benefits against coordination costs, and dispatch uses no whole-wave barriers.
+The [execution state contract](skills/vapa-exec/references/execution-state.md) defines fixed snapshots and append-only events. Its read-only helper validates records and selects dependency-ready candidates; it neither starts agents nor writes GitHub. Only deliverables that people should track or accept separately become sub-issues; internal agent parallelism needs no issues. Dispatch uses no whole-wave barriers.
 
 ## Current scope
 

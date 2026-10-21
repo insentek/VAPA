@@ -53,9 +53,12 @@ described below. A new structural field requires a schema version change.
 - Identity: `issue` is the tracker issue ID, not the VEP display number;
   `issue_url`, when provided, must agree with the source repository and ID.
   `run_id` identifies an invocation/resume attempt. Retain prior runs in events.
-- `mode`: `inline` or `decomposed`; a child is inline with `parent: "42"`.
-  `size`: S/M/L/XL; `domain`: frontend/backend/mixed/docs; optional `risk`:
-  normal/high. `branch` can be null until selected.
+- `mode`: `inline` or `decomposed`. `decomposed` means tracker sub-issues;
+  work split among helper agents stays `inline` and its helpers own no
+  workspace records. A child is inline with `parent: "42"`.
+  `size`: S/M/L/XL, the recorded human estimate; it does not select the mode.
+  `domain`: frontend/backend/mixed/docs; optional `risk`: normal/high.
+  `branch` can be null until selected.
 - `phase`: readiness-check, context-ready, plan-ready, implementing,
   implemented, testing, tested, audited. Revisions may return to an earlier
   phase; record the transition. Do not invent phases for scheduling conditions.
@@ -72,7 +75,9 @@ described below. A new structural field requires a schema version change.
   states remain visible. Set synced only after read-back confirms exactly the
   desired status. Observed timestamps do not imply continuous freshness.
 - `revision_count`, `defect_fix_rounds` and `last_event_seq` are nonnegative
-  integers. Timestamps include a timezone; prefer UTC RFC3339. Reports and Git
+  integers. The two round counters are for visibility; escalation follows lack of
+  progress on the same finding, not a fixed count. Timestamps include a
+  timezone; prefer UTC RFC3339. Reports and Git
   evidence still establish truth; a schema-valid claim is not verification.
 
 ### Decomposed parent
@@ -144,7 +149,7 @@ secrets and business payloads out of events; link redacted evidence instead.
    line or cursor mismatch is a recording fault, not an implementation failure.
    Preserve the original bytes, reconcile current facts with Git/reports/runtime,
    and record an explicit recovery and `run.resumed` event. Do not silently reset
-   the stream, synthesize prior successes or consume audit revision budget.
+   the stream, synthesize prior successes or increment `revision_count`.
 4. For unversioned/older state, archive the original snapshot, map only verified
    facts into version 1 and begin a new observed event stream with `run.resumed`.
    Reference the archive. Legacy narrative fields stay archived, not copied into
