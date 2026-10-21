@@ -281,6 +281,11 @@ list (including pagination). Resolve missing/extra children first; do not close
 unrelated references or prerequisites. Read back the published PR body and verify
 that the set matches. Keep Issues open until the normal merge/acceptance flow;
 adding `Closes` does not authorize closing them immediately.
+Check the PR target: GitHub interprets closing keywords only for PRs targeting
+its default branch. For an intentionally different integration target, retain the
+references and disclose that merge will not auto-close the issues; follow the
+repository's accepted closure flow instead of changing targets or closing early.
+See [GitHub's closing-keyword semantics](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue).
 
 Do not claim the work is ready for PR until `vapa-audit` returns `READY_FOR_PR`.
 
