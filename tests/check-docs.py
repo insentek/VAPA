@@ -7,7 +7,12 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 errors = []
 readmes = [ROOT / "README.md", ROOT / "README.en.md"]
-documents = readmes + [ROOT / "docs/skill-design-review.md"]
+documents = readmes + [
+    ROOT / "docs/skill-design-review.md",
+    ROOT / "docs/exec-parent-child-model.md",
+    ROOT / "skills/vapa-exec/SKILL.md",
+    ROOT / "skills/vapa-audit/SKILL.md",
+] + list((ROOT / "skills/vapa-exec/references").glob("*.md"))
 
 for document in documents:
     content = document.read_text()

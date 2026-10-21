@@ -48,7 +48,7 @@ Conditional inputs, required when applicable:
 - `decomposition.md` — required in the parent workspace when the task was executed as decomposed sub-issues.
 - `design/` — present when `vapa-design` ran before execution: the archived bodies of the confirmed design comments. Use it to cross-check the confirmed designs quoted in the brief against what was actually posted on the issue.
 
-Also inspect the actual repository diff and relevant files. Do not rely only on the execution log.
+Also inspect the actual repository diff and relevant files. Do not rely only on the execution log. For `schema_version: 1` inputs, also check `events.jsonl` against the snapshot cursor; distinguish a recording fault from an implementation defect and reconcile it before issuing a verdict.
 
 Check `state.json` before starting: the phase should be `tested`, and `revision_count` tells you how many audit round-trips have already happened. If `revision_count` is already 2 or more and the same underlying finding persists, prefer `BLOCKED_FOR_HUMAN_DECISION` over another `NEEDS_REVISION` — repeated failed revisions are evidence of a broken assumption, not a coding problem.
 
@@ -177,6 +177,8 @@ The PR draft should make human validation faster, not merely summarize that work
 Write the audit report into the workspace.
 
 After writing the report, update `state.json`: set `phase` to `audited`, and if the verdict is `NEEDS_REVISION`, increment `revision_count` so the revision budget stays enforceable across sessions.
+
+For version 1 snapshots, preserve the fixed format: record `audit`, `evidence.audit` and the actual `evidence.tested_commit`; append an `audit.recorded` event and advance `last_event_seq` consistently. Obtain the workspace writer handoff from the coordinator before writing, or return the result for the coordinator to record. Never write the same snapshot/stream concurrently or add ad hoc audit fields. Legacy inputs remain readable; do not fabricate old events.
 
 Required format:
 

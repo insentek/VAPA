@@ -18,6 +18,7 @@ jobs:
           python3 -m pip install -r tests/requirements.txt
           python3 tests/check-skills.py
           python3 tests/check-docs.py
+          python3 tests/test-exec-state.py
           bash -n skills/vapa-init/scripts/vapa-init.sh skills/vapa-proposal/scripts/vapa-proposal.sh skills/vapa-review/scripts/vapa-review.sh
           bash tests/test-vapa-init.sh
           bash tests/test-vapa-proposal.sh

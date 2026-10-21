@@ -60,7 +60,8 @@ Required structure:
 
 ```text
 .vapa/vapa-exec-<issue-id>/workspace/
-  state.json            # machine-readable phase tracker (see below)
+  state.json            # versioned current execution snapshot
+  events.jsonl          # append-only observations and transitions
   issue.json            # raw issue snapshot
   comments/             # one file per comment, chronological
   images/               # referenced screenshots and design assets
@@ -83,42 +84,25 @@ Conditional artifacts:
 
 `VAPA_AUDIT.md` is produced by `vapa-audit` after implementation and tests are complete.
 
-### state.json
+### Stable state and events
 
-Keep a small machine-readable tracker so execution can be resumed and orchestrated:
+Before initializing, resuming or handing over execution, read
+[references/execution-state.md](references/execution-state.md). It defines the
+version 1 snapshot, append-only events, single-writer ownership, legacy migration
+and read-only checks. Keep lifecycle phase, worker activity, audit verdict,
+integration and tracker status separate. Use its fixed fields; link reports
+instead of accumulating per-step flags or narrative fields in `state.json`.
 
-```json
-{
-  "issue": "42",
-  "size": "S",
-  "domain": "frontend | backend | mixed | docs",
-  "phase": "readiness-check | context-ready | plan-ready | implemented | tested | audited",
-  "branch": "vapa/42-batch-export",
-  "revision_count": 0,
-  "updated_at": "YYYY-MM-DDTHH:mm:ssZ"
-}
-```
+Update the snapshot and append an event at each actual transition. Record tests
+and audits against their tested source. Unknown runtime state, stale observations,
+failed sync and interrupted tests must remain visible. A new session resumes
+from verified artifacts and the event cursor, never from assumed completion.
 
-Update `state.json` at every phase transition. If a session starts and `state.json` already exists, resume from the recorded phase instead of restarting; verify the recorded branch and the latest artifacts before continuing. If the workspace exists but has no `state.json` — typically because `vapa-design` created it to archive confirmed designs — start a fresh execution and treat the existing `design/` archive as input, not as prior execution state.
-
-For decomposed tasks (see Decomposition Protocol), the parent workspace extends the schema:
-
-```json
-{
-  "issue": "42",
-  "mode": "decomposed",
-  "sub_issues": {
-    "43": {"workspace": ".vapa/vapa-exec-43/", "phase": "audited", "audit": "READY_TO_INTEGRATE", "depends_on": ["41"]},
-    "44": {"workspace": ".vapa/vapa-exec-44/", "phase": "implemented", "audit": null, "depends_on": []}
-  },
-  "integration_phase": "pending | integrating | tested",
-  "defect_fix_rounds": 0
-}
-```
-
-A sub-issue workspace adds `"parent": "42"` to its own `state.json`.
-
-State reconciliation: when `vapa-exec` starts on a parent issue, rebuild the aggregate view from the tracker linkage and each sub-workspace's `state.json` rather than trusting the parent's copy — sub-issues may have been executed individually since the parent state was last written. If they disagree, the sub-workspace records win; correct the parent `state.json` and record the reconciliation in `VAPA_EXEC_LOG.md`.
+For a decomposed parent, reconcile native tracker linkage, child execution
+snapshots and parent-owned integration receipts before dispatch. Child records
+own execution facts; only the coordinator records integration after checking the
+actual parent branch. Validate the snapshot/events with the installed
+`scripts/exec-state.py check <workspace>`; no background service is required.
 
 ## Execution Flow
 
@@ -249,7 +233,7 @@ Handle deviations by severity:
 2. **Plan deviation within scope** (different file layout, extra step discovered): log it, append a dated revision note to `VAPA_EXEC_PLAN.md`, continue.
 3. **Broken assumption** (the proposal's premise is wrong, the approved approach cannot work, scope must grow): stop, set the log entry, and request a human decision. Never silently change direction or expand scope.
 
-For long-running work, checkpoint at least at every completed implementation step: update `state.json`, `VAPA_EXEC_LOG.md`, and commit, so an interrupted session loses at most one step.
+For long-running work, checkpoint at completed implementation steps: append the actual event, update the versioned snapshot and `VAPA_EXEC_LOG.md`, then commit. Check the event cursor on resume; preserve and reconcile recording faults without inventing history.
 
 ### Step 7: Test
 
@@ -263,6 +247,8 @@ Include:
 - Acceptance criteria coverage — every criterion must map to a test, a manual check, or an explicitly recorded gap
 - Regression check: existing test suite and lint/build for the impacted area still pass
 - Known gaps or tests not run, with reasons
+
+Reuse existing verification only when the tested source and relevant inputs are unchanged; name its source and evidence. Re-run affected checks after changes and the complete relevant integration suite before parent audit. Documentation-only checkpoints do not justify repeating a build or test run.
 
 For UI work, testing additionally requires visual evidence — see Frontend Execution Requirements.
 
@@ -303,26 +289,53 @@ Size selects the execution mode:
 3. **Tracker linkage.** On GitHub, create sub-issues with the native sub-issue feature so the tracker records the parent-child relationship automatically. On other platforms, fall back to a task list in the parent issue body plus a first-line parent reference in each sub-issue body. Record the linkage method in `decomposition.md`. The workspace remains the source of truth for execution; tracker linkage is the visibility layer.
 4. **Approval coverage, with a guardrail.** The parent issue's approval covers the sub-issues listed in `decomposition.md`. Discovering a need for a sub-issue outside that list is a scope change and requires a human decision.
 5. **One branch per parent issue.** All sub-issue work lands on the parent's branch `vapa/<parent-id>-<slug>`. Sub-issues that run in parallel work in separate worktrees; the orchestrator merges a sub-issue's work back into the parent branch only after its audit returns `READY_TO_INTEGRATE`. Sub-agents never write to the parent branch directly.
-6. **Dual entry.** `vapa-exec` accepts either a parent issue URL — orchestration mode: reconcile state, schedule sub-issues by DAG waves, integrate, prepare for the parent audit — or a sub-issue URL — single mode: execute only that sub-issue, but first read the parent workspace's `decomposition.md` and the parent plan's cross-cutting contracts. If the parent workspace is missing locally in single mode, direct the user to run `vapa-exec` on the parent first.
+6. **Dual entry.** `vapa-exec` accepts either a parent issue URL — orchestration mode: reconcile state, schedule dependency-ready sub-issues, integrate, prepare for the parent audit — or a sub-issue URL — single mode: execute only that sub-issue, but first read the parent workspace's `decomposition.md` and the parent plan's cross-cutting contracts. If the parent workspace is missing locally in single mode, direct the user to run `vapa-exec` on the parent first.
 7. **Single writer for parent artifacts.** Only the orchestrator writes the parent `state.json` and the parent issue's roll-up comments. Sub-agents write only their own workspace and their own issue's comments.
 
-### DAG scheduling
+### Decomposition benefit check
 
-Record dependencies explicitly in `decomposition.md`, per sub-issue:
+Before proposing tracker children, use the benefit/merge-back checks in
+[references/decomposition.md](references/decomposition.md). A tracker child is
+an independently verifiable delivery unit, not every agent assignment or coding
+step. Keep a cohesive capability's API, necessary UI and tests together when it
+fits S. DTOs, mappers and components normally remain implementation steps.
 
-```markdown
-### Sub-issue #43: <title>
-- delivers: <what it delivers>
-- depends_on: [#41]        # logical dependency: #41's output is #43's input
-- conflicts_with: [#44]    # optional physical conflict: touches the same files; serialize
-```
+For every proposed child, identify its acceptance boundary, owner/affected area,
+and concrete benefit: independent validation, useful parallelism or risk
+isolation. Compare that benefit with planning, worktree, testing, audit and
+integration overhead. Merge candidates that repeatedly require joint changes or
+one inseparable acceptance test; do not weaken a real security/transaction boundary
+just to reduce the count. Size limits still apply.
 
-- Validate the graph is acyclic when the human confirms `decomposition.md`.
-- Schedule in topological waves: sub-issues with no unmet dependencies form the current wave and may run in parallel, one worktree each. When the whole wave is merged back, the next wave unlocks. A sub-issue with multiple dependencies waits for all of them.
-- Wave N+1 worktrees are created from the parent branch only after wave N has been fully merged back, so dependencies are physically present in the code the next wave builds on.
-- Distinguish `depends_on` (logical; fixed order) from `conflicts_with` (file overlap; serialized, but any order). Most file overlaps should already be dissolved by defining cross-cutting contracts in the parent plan; `conflicts_with` is the fallback.
-- Blocked propagation follows the edges: when a sub-issue is blocked, its downstream sub-issues pause; its siblings continue. The parent roll-up comment states what is affected.
-- The DAG lives only in the workspace (`decomposition.md` and `state.json`). Tracker sub-issue features do not express dependencies. Keep the machinery simple: a `depends_on` list, topological waves, and the environment's concurrency limit — not a general-purpose scheduler.
+Do this check before creating issues. Calibrate estimates using representative
+existing work or the first approved units, and record changes to the remaining
+plan. Reconfirm changed scope or tracker split as needed; do not repeatedly ask
+for authorization already granted. There is no target child count or fixed maximum.
+
+### Dependency-ready scheduling
+
+- Record direct prerequisites in `depends_on` and physical conflicts in
+  `conflicts_with`; declare a named exclusive resource only when work cannot
+  safely overlap. Do not turn a resource or file conflict into a fake dependency.
+- Validate that dependencies exist in the approved graph and that it is acyclic.
+  Topological levels can explain the graph, but are **not execution barriers**.
+- After each integration or worker release, recompute readiness. A child can
+  start when all its direct dependencies have READY_TO_INTEGRATE and verified
+  integration receipts, its plan/authorization is ready, a worker slot is free,
+  and no active or newly selected task conflicts with it or holds its resource.
+- Start an eligible successor immediately; do not wait for unrelated members of
+  an earlier display level. Multiple prerequisites must all be integrated.
+- Create/refresh its worktree from the current parent revision containing those
+  dependency commits. A worktree prepared earlier is not proof of the right base.
+- A blocked child holds its dependent paths; independent paths continue. Running,
+  waiting or unknown workers keep reservations until reconciled. A missing
+  heartbeat does not authorize a second worker or resource cleanup.
+- Use `scripts/exec-state.py ready <parent-workspace> --capacity <worker-slots>`
+  for read-only candidates and waiting reasons; verify Git/report evidence before
+  dispatch. The coordinator remains the only dispatcher and parent writer.
+- Keep this a small ready set and existing host concurrency, not a new scheduler
+  service. Native sub-issues express containment; the local approved DAG defines
+  dependencies. Prefer direct edges; derive transitive relationships for display.
 
 ### Integration
 
@@ -375,19 +388,28 @@ When true multi-agent execution is unavailable, simulate these roles sequentiall
 
 ## Issue Status Sync and Progress Reporting
 
-VAPA replaces reporting with transparency; the issue must reflect execution reality:
+Execution facts, local events and tracker labels must agree at handoffs:
 
-- When implementation starts, set `status: in-progress` on the issue (or ask the user to, if the Agent lacks permission).
-- Post a progress comment on the issue at meaningful transitions: execution started (with workspace path and branch), blocked (with the specific decision needed), and tested/audit-ready (with a summary and evidence pointers).
-- When blocked, the issue comment is the canonical record of the blocker — not just the workspace log.
-- After audit returns `READY_FOR_PR`, the issue moves toward `status: in-validation` as part of PR submission.
+- At implementation start, replace the issue's old `status:` label with
+  `status: in-progress`. Preserve all non-status labels. Status labels are mutually
+  exclusive; adding a second one is not a successful transition.
+- After READY_FOR_PR and parent PR submission, set the parent **and every included,
+  integrated child** to `status: in-validation`. READY_TO_INTEGRATE alone does not
+  mark a child done. Closure/`status: done` follows the repository's human acceptance
+  and merge policy, not agent completion.
+- On resume, meaningful transitions and final handoff, read back tracker status
+  and native child linkage. Record desired and observed values plus sync outcome.
+  Failure or lack of permissions leaves sync pending/failed/unavailable; continue
+  independent local work, but never report synchronization as complete.
+- Publish concise comments at execution start, genuine blockers, tested/audit-ready
+  and final handoff, within the user's publication authorization. Link detailed
+  evidence; do not post heartbeats or duplicate every local event to GitHub.
 
-For decomposed tasks, sync runs in both directions:
-
-- Every phase transition of a sub-issue produces a detailed comment on the sub-issue and a condensed roll-up comment on the parent issue, posted by the orchestrator: sub-issue id, transition outcome, and a link to the detailed comment. Reference, never copy — the sub-issue's comment is the canonical record.
-- Blocked sub-issues propagate: mark the sub-issue blocked in the parent `state.json`, pause scheduling of its downstream sub-issues (per the DAG), and state the needed human decision in the parent roll-up comment.
-- Defect fixes post a receipt: reply to the defect comment with the fixing commit and verification evidence, plus a roll-up comment on the parent issue (see Defect Handling).
-- When all sub-issues are integrated and the parent audit concludes, post a final summary comment on the parent issue: the sub-issue verdict list, integration test results, the parent audit verdict, and the workspace path.
+For decomposed tasks, the coordinator posts material child outcomes with links to
+canonical child details, batches related parent roll-ups, and states affected
+versus independent paths when blocked. Parent snapshots/events have one writer;
+child writers update their own streams. A final summary lists child verdicts,
+integration results and parent verdict. Defect fixes still post fixing receipts.
 
 ## Defect Handling
 
@@ -419,7 +441,7 @@ After implementation and tests, invoke or recommend `vapa-audit` with the worksp
 
 The handoff is ready only when these files exist:
 
-- `state.json` (phase: `tested`)
+- `state.json` (versioned; phase: `tested`) and consistent `events.jsonl`
 - `issue-brief.md`
 - `source-map.md`
 - `readiness-report.md`
@@ -466,7 +488,11 @@ Post-audit changes: any code change after an audit verdict — including defect-
 - Scheduling a sub-issue before its `depends_on` dependencies have been merged back into the parent branch.
 - Summarizing or submitting the parent PR before every sub-issue has reached `READY_TO_INTEGRATE` and been merged back.
 - Skipping the delta re-audit after defect fixes.
-- Letting the tracker linkage drift from `decomposition.md` without correcting it.
+- Letting the tracker linkage or mutually exclusive status labels drift without a read-back check.
+- Creating a tracker issue for each coding step without a decomposition benefit check.
+- Imposing full-wave barriers on independent dependency-ready work.
+- Treating stale heartbeats as completion, or claiming tests/fees without actual observations.
+- Expanding snapshot fields ad hoc instead of referencing reports and recording events.
 - Iterating on `NEEDS_REVISION` indefinitely instead of escalating a broken assumption.
 - Leaving the issue silent for the whole execution — no status label, no progress comments.
 - Auditing your own work without writing a separate audit artifact.

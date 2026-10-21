@@ -88,9 +88,11 @@ Initialization updates remote labels and commits four templates directly to the 
 
 ## Evidence stays with the work
 
-Design and execution share `.vapa/vapa-exec-<issue-number>/workspace/`. Design adds only `design/`; execution adds `state.json`, source snapshots, the agreed brief, source map, readiness report, codebase survey, plan, execution log, test evidence, and PR draft. Audit adds its report. UI work also requires `ui-spec.md`; decomposed parent tasks require `decomposition.md`. Records can accompany the implementation after redaction. See the [parent/child execution model](docs/exec-parent-child-model.md) (Chinese).
+Design and execution share `.vapa/vapa-exec-<issue-number>/workspace/`. Design adds only `design/`; execution adds versioned `state.json`, append-only `events.jsonl`, source snapshots, the agreed brief, source map, readiness report, codebase survey, plan, execution log, test evidence, and PR draft. Audit adds its report. UI work also requires `ui-spec.md`; decomposed parent tasks require `decomposition.md`. Records can accompany the implementation after redaction. See the [parent/child execution model](docs/exec-parent-child-model.md) (Chinese).
 
 `READY_FOR_PR` means ready for human review. A sub-issue's `READY_TO_INTEGRATE` only allows integration into its parent branch. People accept delivery and approve the final merge.
+
+The [execution state contract](skills/vapa-exec/references/execution-state.md) defines fixed snapshots and append-only events. Its read-only helper validates records and selects dependency-ready candidates; it neither starts agents nor writes GitHub. Decomposition weighs independent delivery benefits against coordination costs, and dispatch uses no whole-wave barriers.
 
 ## Current scope
 

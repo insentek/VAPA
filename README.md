@@ -117,7 +117,8 @@ $vapa-audit 审计 .vapa/vapa-exec-<issue-number>/workspace/
 ```text
 .vapa/vapa-exec-<issue-number>/workspace/
   design/                # 已确认设计的本地归档（适用时）
-  state.json             # 执行阶段、分工与重试状态
+  state.json             # version 1 当前快照：阶段、活跃状态、审计与同步
+  events.jsonl           # 实际事件，追加记录，供恢复与观察
   issue.json             # 原始提案快照
   comments/              # 讨论记录
   images/                # 引用图片（适用时）
@@ -132,6 +133,8 @@ $vapa-audit 审计 .vapa/vapa-exec-<issue-number>/workspace/
   PR_DRAFT.md            # 供人工审阅的 PR 草稿
   VAPA_AUDIT.md          # 审计结论与证据
 ```
+
+状态与事件格式见 [执行状态契约](skills/vapa-exec/references/execution-state.md)。附带只读检查工具，可检查记录一致性并计算依赖就绪任务；它不负责启动 Agent 或写 GitHub。拆分前评估独立交付收益与管理成本，调度按直接依赖就绪进行，无需等待整波完成。
 
 UI 任务还需要 `ui-spec.md`；拆分任务还需要父任务的 `decomposition.md`。设计阶段只创建 `design/`，执行阶段再补齐状态和其余记录。拆分执行与父子任务交接见 [执行模型](docs/exec-parent-child-model.md)。
 
