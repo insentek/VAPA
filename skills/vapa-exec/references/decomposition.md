@@ -59,6 +59,14 @@ parallelism or meet an arbitrary count; preserve S size and real risk boundaries
 [What defines "the parent issue is done": how the sub-implementations must
 compose, and what the integrated test suite must demonstrate.]
 
+## Parent PR closing references
+
+- Expected closing set: parent issue plus every approved, integrated child above.
+- Emit a separate `Closes #<id>` line for each issue (use full URLs if needed).
+- Compare against the complete native tracker child list before publication and
+  read back the PR body afterward. Resolve missing/extra IDs; do not infer a range
+  or close unrelated prerequisites. Do not close issues before merge/acceptance.
+
 ## Approval
 
 - Presented to: @<human> on <YYYY-MM-DD>

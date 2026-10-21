@@ -163,6 +163,7 @@ When the work was executed as sub-issues per `decomposition.md`:
 Check `PR_DRAFT.md` for:
 
 - Correct linked issue.
+- For a decomposed parent PR, explicit `Closes` references cover the parent and every approved, integrated child, with no missing or unrelated issues; reconcile against decomposition and the complete tracker child list.
 - Clear implementation summary.
 - Acceptance criteria mapping.
 - Test evidence, including visual evidence pointers for UI changes.

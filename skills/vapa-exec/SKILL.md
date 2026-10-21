@@ -269,6 +269,19 @@ Write `PR_DRAFT.md` with:
 
 For decomposed tasks, organize the implementation summary and acceptance criteria mapping by sub-issue, so human reviewers can review the PR segment by segment.
 
+For a decomposed parent PR, include an explicit closing reference for the parent
+and **every approved sub-issue delivered by that PR**, one per line with the
+keyword repeated: `Closes #42`, `Closes #43`, `Closes #44`. Use full issue URLs
+when repository identity would otherwise be ambiguous. A range, ordinary mention,
+task list or native parent-child link does not replace these declarations.
+
+Before creating or updating the PR, reconcile the exact closing set against the
+approved decomposition, integrated child records and the complete tracker child
+list (including pagination). Resolve missing/extra children first; do not close
+unrelated references or prerequisites. Read back the published PR body and verify
+that the set matches. Keep Issues open until the normal merge/acceptance flow;
+adding `Closes` does not authorize closing them immediately.
+
 Do not claim the work is ready for PR until `vapa-audit` returns `READY_FOR_PR`.
 
 ## Decomposition Protocol
